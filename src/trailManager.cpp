@@ -43,12 +43,15 @@ Camera& TrailManager::getCamera()
     return _camera;
 }
 
-void TrailManager::updateFromOpenCV(std::vector<int> markerId, std::vector<cv::Vec<double, 3>> currentMarkerPos)
+void TrailManager::updateFromOpenCV(const cv::Mat& camToWorld, const std::vector<int>& markerId, const std::vector<cv::Vec<double, 3>>& currentMarkerPos)
 {
     for(int i = 0; i < std::min(markerId.size(), _trails.size()); i++)
     {
+        cv::Vec3d tmp;
+        cv::transform(currentMarkerPos, tmp, camToWorld);
+
         //add a point a the trail :
-        _trails[i].pushBack(glm::vec3(currentMarkerPos[i][0], currentMarkerPos[i][1], currentMarkerPos[i][2] ));
+        _trails[i].pushBack(glm::vec3(tmp[0], tmp[2], tmp[1]));
         _trails[i].update(); //automaticaly erase points at the end of trails.
     }
 }
@@ -70,11 +73,13 @@ void TrailManager::renderToTexture()
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
 
-void TrailManager::updateCameraPos(std::vector<glm::vec3> corners, float cameraHeight)
+void TrailManager::updateCameraPos(const std::vector<cv::Vec3d>& corners, float cameraHeight)
 {
     glm::vec3 sum(0,0,0);
-    for(int i = 0; i < corners.size(); i++)
-        sum += corners[i];
+    for(int i = 0; i < corners.size(); i++){
+        glm::vec3 t(corners[i][0], corners[i][2], corners[i][1]);
+        sum += t;
+    }
     sum /= corners.size();
 
     _camera.setPosition(glm::vec3(sum.x, cameraHeight, sum.z));

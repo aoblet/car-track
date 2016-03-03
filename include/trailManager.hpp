@@ -32,9 +32,9 @@ public:
     TrailManager(int texWidth, int texHeight, int trailCount = 1, int trailBufferSize = 100, float trailWidth = 5);
 
     Camera& getCamera();
-    void updateFromOpenCV(std::vector<int> markerId, std::vector<cv::Vec<double, 3> > currentMarkerPos);
+    void updateFromOpenCV(const cv::Mat& camToWorld, const std::vector<int>& markerId, const std::vector<cv::Vec<double, 3>>& currentMarkerPos);
     void renderToTexture();
-    void updateCameraPos(std::vector<glm::vec3> corners, float cameraHeight = 10);
+    void updateCameraPos(const std::vector<cv::Vec3d>& corners, float cameraHeight = 10);
     void convertGlTexToCVMat(cv::Mat& cvMat);
 
 };
