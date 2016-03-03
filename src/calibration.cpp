@@ -4,6 +4,7 @@
 #include "opencv2/aruco.hpp"
 #include "opencv2/aruco/charuco.hpp"
 #include <vector>
+#include <glm/vec3.hpp>
 
 using namespace cv;
 
@@ -22,6 +23,7 @@ void calibrateCamera(cv::Mat& cameraMatrix, cv::Mat& distCoeffs){
     std::vector<std::vector<std::vector<cv::Point2f>>> allCornersConcatenated;
     std::vector<std::vector<int>> allIdsConcatenated;
     std::vector<cv::Mat> allImgs;
+    bool rHasPressed = false;
 
     while(1){
         char key = (char)cv::waitKey(1);
@@ -39,8 +41,11 @@ void calibrateCamera(cv::Mat& cameraMatrix, cv::Mat& distCoeffs){
 
         imshow("plop", fakeImage);
 
+        if(key == 'r')
+            rHasPressed = !rHasPressed;
+
         // if record
-        if(key == 'r'){
+        if(rHasPressed){
             allImgs.push_back(inputImage);
             std::vector<int> markerIds;
             std::vector<std::vector<Point2f>> markerCorners;
@@ -101,6 +106,9 @@ void estimateMarkersPosition(cv::Mat& cameraMatrix, cv::Mat& distortionCoeffs){
             // draw axis for each marker
             for(size_t i=0; i<ids.size(); i++)
                 cv::aruco::drawAxis(imageCopy, cameraMatrix, distortionCoeffs, rvecs[i], tvecs[i], 0.1);
+
+//            for(auto& pos : tvecs)
+//                DLOG(INFO) << pos;
         }
 
         cv::imshow("out", imageCopy);
@@ -109,4 +117,27 @@ void estimateMarkersPosition(cv::Mat& cameraMatrix, cv::Mat& distortionCoeffs){
         if (key == 27)
             break;
     }
+}
+
+void getMarkersPositionsPerFrame(cv::Mat& imageInput, cv::Ptr<cv::aruco::Dictionary>& dicMarkers,
+                                 std::vector<int>& ids, std::vector<cv::Vec3d>& positions,
+                                 cv::Mat& cameraMatrix, cv::Mat& distortionCoeffs, bool drawAxis){
+    ids.clear();
+    positions.clear();
+    std::vector<std::vector<cv::Point2f>> corners;
+    cv::aruco::detectMarkers(imageInput, dicMarkers, corners, ids);
+
+    // if at least one marker detected
+    if (ids.size() == 0)
+        return;
+    cv::aruco::drawDetectedMarkers(imageInput, corners, ids);
+    std::vector<cv::Vec3d> rvecs;
+    cv::aruco::estimatePoseSingleMarkers(corners, 0.05, cameraMatrix, distortionCoeffs, rvecs, positions);
+
+    if(!drawAxis)
+        return;
+    
+    // draw axis for each marker
+    for(size_t i=0; i<ids.size(); i++)
+        cv::aruco::drawAxis(imageInput, cameraMatrix, distortionCoeffs, rvecs[i], positions[i], 0.1);
 }
