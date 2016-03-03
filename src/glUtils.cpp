@@ -49,7 +49,7 @@ Program buildProgram(const GLchar* vsSrc, const GLchar* fsSrc) {
 }
 
 // Load source code from files and build a GLSL program
-Program loadProgram(const std::__cxx11::string &vsFile, const std::__cxx11::string &fsFile) {
+Program loadProgram(const std::string &vsFile, const std::string &fsFile) {
     Shader vs = loadShader(GL_VERTEX_SHADER, vsFile);
     Shader fs = loadShader(GL_FRAGMENT_SHADER, fsFile);
 

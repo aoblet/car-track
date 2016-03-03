@@ -8,15 +8,13 @@
 //glew
 #include <GL/glew.h>
 //std
+#include <string>
 #include <iostream>
 #include <vector>
 #include <deque>
 #include <stdexcept>
 #include <fstream>
-#include <stdexcept>
-#include <string>
 #include <sstream>
-#include <iostream>
 
 //////////////////////////////////////////////
 /////////////////// GLOBAL ///////////////////
