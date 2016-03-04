@@ -1,3 +1,5 @@
+#include <time.h>
+#include <unistd.h>
 #include "trailManager.hpp"
 
 static const std::string  fragmentShader = "#version 330 core\n \
@@ -5,7 +7,7 @@ static const std::string  fragmentShader = "#version 330 core\n \
         in vec2 vUVCoord;\n \
         out vec4 fFragColor;\n \
         void main() {\n \
-            fFragColor = vec4(1,0,0/*vFragColor*/, 1);\n \
+            fFragColor = vec4(vFragColor, 1);\n \
         }";
 
 static const std::string vertexShader= "#version 330 core\n \
@@ -97,10 +99,22 @@ void TrailManager::updateFromOpenCV(const cv::Mat& camToWorld, const std::vector
     }
 }
 
+void TrailManager::updateTrails()
+{
+    for(int i = 0; i < _trails.size(); i++)
+        _trails[i].update();
+}
+
+void TrailManager::synchronizeVBOTrails()
+{
+    for(int i = 0; i < _trails.size(); i++)
+        _trails[i].synchronizeVbos();
+}
+
 
 void TrailManager::render()
 {
-    glClearColor(0,1,0,1);
+    glClearColor(0,0,0,1);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
     glUseProgram(_glProgram);
@@ -113,13 +127,12 @@ void TrailManager::render()
 
 void TrailManager::renderToTexture()
 {
-    //glViewport(0, 0, _texWidth, _texHeight);
-    glClearColor(0,1,0,1);
+    glClearColor(0,0,0,1);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-    glm::vec3 color = glm::vec3(rand()%255, rand()%255, rand()%255);
-    glClearColor(color.x/255.f,color.y/255.f,color.z/255.f,1);
-    glViewport(0, 0, _texWidth, _texHeight);
+    //glm::vec3 color = glm::vec3(rand()%255, rand()%255, rand()%255);
+    //glClearColor(color.x/255.f,color.y/255.f,color.z/255.f,1);
+    //glViewport(0, 0, _texWidth, _texHeight);
     //draw
     glBindFramebuffer(GL_FRAMEBUFFER, _fbo);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -161,25 +174,140 @@ void TrailManager::convertGlTexToCVMat(cv::Mat& cvMat)
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
 
+void TrailManager::convertWindowBufferToCVMat(cv::Mat& cvMat)
+{
+    //use fast 4-byte alignment (default anyway) if possible
+    glPixelStorei(GL_PACK_ALIGNMENT, (cvMat.step & 3) ? 1 : 4);
+    //set length of one complete row in destination data (doesn't need to equal img.cols)
+    glPixelStorei(GL_PACK_ROW_LENGTH, cvMat.step/cvMat.elemSize());
+    glReadPixels(0, 0, cvMat.cols, cvMat.rows, GL_BGR, GL_UNSIGNED_BYTE, cvMat.data);
+}
+
 void openglDrawCalls(void* userData)
 {
     TrailManager* trailManager = static_cast<TrailManager*>(userData);
-    trailManager->getTrail(0).synchronizeVbos();
+
+    //synchronise opengl buffers :
+    trailManager->synchronizeVBOTrails();
     trailManager->render();
 }
 
 void CallBackMouseFunc(int event, int x, int y, int flags, void* userdata)
 {
-    TrailManager* trailManager = static_cast<TrailManager*>(userdata);
+    InputInfo* inputInfo = static_cast<InputInfo*>(userdata);
 
-     if ( event == cv::EVENT_MOUSEMOVE )
-     {
-          trailManager->getTrail(0).pushBack(glm::vec3(x, y, 0));
-          std::cout << "Mouse move over the window - position (" << x << ", " << y << ")" << std::endl;
-     }
+    inputInfo->pointerPosition = glm::vec2(x,y);
+
+    if ( event == cv::EVENT_LBUTTONDOWN )
+    {
+        inputInfo->leftButtonDown = true;
+    }
+    else if ( event == cv::EVENT_LBUTTONUP )
+    {
+        inputInfo->leftButtonDown = false;
+    }
+    else if (event == cv::EVENT_RBUTTONDOWN )
+    {
+        inputInfo->rightButtonDown = true;
+    }
+    else if (event == cv::EVENT_RBUTTONUP )
+    {
+        inputInfo->rightButtonDown = false;
+    }
 }
+
+int testDrawToTexture()
+{
+    InputInfo inputInfo;
+
+    cv::namedWindow("window", cv::WINDOW_NORMAL|cv::WINDOW_OPENGL);
+    cv::resizeWindow("window", 800, 600);
+
+    cv::namedWindow("window2", cv::WINDOW_NORMAL);
+    cv::resizeWindow("window2", 800, 600);
+
+    // Initialize glew for OpenGL3+ support :
+    GLenum glewInitError = glewInit();
+    if(GLEW_OK != glewInitError) {
+        std::cerr << glewGetErrorString(glewInitError) << std::endl;
+        return EXIT_FAILURE;
+    }
+
+    std::cout << "OpenGL Version : " << glGetString(GL_VERSION) << std::endl;
+    std::cout << "GLEW Version : " << glewGetString(GLEW_VERSION) << std::endl;
+
+
+    //create TrailManager
+    int finalImgWidth = 800; // ???
+    int finalImgHeight = 600; // ???
+    TrailManager trailManager(finalImgWidth, finalImgHeight, 2, 128, 10);
+    cv::Mat trailImg(finalImgWidth, finalImgHeight, CV_8UC3);
+
+    //test loop :
+    bool leave = false;
+    double t = (double)cv::getTickCount();
+    //set the opengl context :
+    cv::setOpenGlContext("window");
+    cv::setOpenGlDrawCallback("window", openglDrawCalls, &trailManager);
+    while(!leave)
+    {
+        t = (double)cv::getTickCount();
+
+        //add point to trail :
+        cv::setMouseCallback("window", CallBackMouseFunc, &inputInfo);
+        if ( inputInfo.leftButtonDown )
+        {
+            std::cout<<"add to trail 01"<<std::endl;
+             trailManager.getTrail(0).pushBack(glm::vec3(inputInfo.pointerPosition.x, inputInfo.pointerPosition.y, 0), glm::vec3(1,0,0));
+             //std::cout << "Mouse move over the window - position (" << inputInfo.pointerPosition.x << ", " << inputInfo.pointerPosition.y << ")" << std::endl;
+        }
+        else if (inputInfo.rightButtonDown)
+        {
+            std::cout<<"add to trail 02"<<std::endl;
+            if(trailManager.getTrailCount() > 1)
+               trailManager.getTrail(1).pushBack(glm::vec3(inputInfo.pointerPosition.x, inputInfo.pointerPosition.y, 0), glm::vec3(0,1,0));
+        }
+
+        //TODO : opencv mapping to render the trails
+
+        //cv::ogl::Texture2D tex();
+        char key = (char) cv::waitKey(1);
+
+        //display the final image :
+        cv::updateWindow("window");
+
+        //render the trails :
+        //trailManager.renderToTexture();
+        //TODO : get the opengl texture and give it to openCV, modify trailImg
+        //trailManager.convertGlTexToCVMat(trailImg);
+        trailManager.convertWindowBufferToCVMat(trailImg);
+        //the result img may be flipped :
+        //cv::flip(trailImg, trailImgFlipped, 0);
+        //display the final image :
+        cv::imshow("window2", trailImg);
+
+        //update all trails :
+        trailManager.updateTrails();
+
+        if (key == 27)
+            break;
+
+        t = (double)(cv::getTickCount() - t)/cv::getTickFrequency();
+        //std::cout << "Times passed in seconds: " << t << std::endl;
+        //std::cout << "frame per second: " << 1.f / t << std::endl;
+        if(t < 1.f/30.f)
+        {
+            usleep(((1.f/30.f) - t)*1000000);
+        }
+    }
+
+}
+
 int testDrawFollowingMouse()
 {
+
+    InputInfo inputInfo;
+
     cv::namedWindow("window", cv::WINDOW_NORMAL|cv::WINDOW_OPENGL);
     cv::resizeWindow("window", 800, 600);
 
@@ -197,7 +325,7 @@ int testDrawFollowingMouse()
     //create TrailManager
     int finalImgWidth = 800; // ???
     int finalImgHeight = 600; // ???
-    TrailManager trailManager(finalImgWidth, finalImgHeight, 1, 128, 10);
+    TrailManager trailManager(finalImgWidth, finalImgHeight, 2, 128, 10);
 
     //test loop :
     bool leave = false;
@@ -210,7 +338,19 @@ int testDrawFollowingMouse()
         t = (double)cv::getTickCount();
 
         //add point to trail :
-        cv::setMouseCallback("window", CallBackMouseFunc, &trailManager);
+        cv::setMouseCallback("window", CallBackMouseFunc, &inputInfo);
+        if ( inputInfo.leftButtonDown )
+        {
+            std::cout<<"add to trail 01"<<std::endl;
+             trailManager.getTrail(0).pushBack(glm::vec3(inputInfo.pointerPosition.x, inputInfo.pointerPosition.y, 0), glm::vec3(1,0,0));
+             //std::cout << "Mouse move over the window - position (" << inputInfo.pointerPosition.x << ", " << inputInfo.pointerPosition.y << ")" << std::endl;
+        }
+        else if (inputInfo.rightButtonDown)
+        {
+            std::cout<<"add to trail 02"<<std::endl;
+            if(trailManager.getTrailCount() > 1)
+               trailManager.getTrail(1).pushBack(glm::vec3(inputInfo.pointerPosition.x, inputInfo.pointerPosition.y, 0), glm::vec3(0,1,0));
+        }
 
         //TODO : opencv mapping to render the trails
 
@@ -220,18 +360,18 @@ int testDrawFollowingMouse()
         //display the final image :
         cv::updateWindow("window");
 
-        //update trail :
-        trailManager.getTrail(0).update();
+        //update all trails :
+        trailManager.updateTrails();
 
         if (key == 27)
             break;
 
         t = (double)(cv::getTickCount() - t)/cv::getTickFrequency();
-        std::cout << "Times passed in seconds: " << t << std::endl;
-        std::cout << "frame per second: " << 1.f / t << std::endl;
-    //        if(t < 1.f/30.f)
-    //        {
-    //            usleep(((1.f/30.f) - t)*1000);
-    //        }
+        //std::cout << "Times passed in seconds: " << t << std::endl;
+        //std::cout << "frame per second: " << 1.f / t << std::endl;
+        if(t < 1.f/30.f)
+        {
+            usleep(((1.f/30.f) - t)*1000000);
+        }
     }
 }

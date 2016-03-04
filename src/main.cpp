@@ -8,8 +8,9 @@
 
 int main(int argc, char** argv) {
 
+    //FEW TESTS FOR TRAIL MANAGER WITH OPENGL :
     //testDrawFollowingMouse();
-
+    testDrawToTexture();
 
     cv::Mat cameraMatrix(cv::Mat::eye(3,3, CV_32F)), distCoeffs;
     DLOG(INFO) << "Matrix before calib " << cameraMatrix;

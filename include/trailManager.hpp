@@ -18,6 +18,15 @@
 #include <opencv2/opencv.hpp>
 
 
+struct InputInfo{
+    bool leftButtonDown;
+    bool rightButtonDown;
+    glm::vec2 pointerPosition;
+
+    InputInfo() : leftButtonDown(false), rightButtonDown(false), pointerPosition(0,0)
+    {}
+};
+
 class TrailManager{
 private:
     std::vector<Trail> _trails;
@@ -37,15 +46,19 @@ public:
     Trail& getTrail(int idx);
     int getTrailCount() const;
     void updateFromOpenCV(const cv::Mat& camToWorld, const std::vector<int>& markerId, const std::vector<cv::Vec<double, 3>>& currentMarkerPos);
+    void updateTrails();
+    void synchronizeVBOTrails();
     void render();
     void renderToTexture();
     void updateCameraPos(const std::vector<cv::Vec3d>& corners, float cameraHeight = 10);
     void convertGlTexToCVMat(cv::Mat& cvMat);
+    void convertWindowBufferToCVMat(cv::Mat& cvMat);
 
 };
 
 void openglDrawCalls(void* userData);
 void CallBackMouseFunc(int event, int x, int y, int flags, void* userdata);
 int testDrawFollowingMouse();
+int testDrawToTexture();
 
 //////////////////////////////////////////
