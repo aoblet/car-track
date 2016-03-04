@@ -41,6 +41,7 @@ public:
     void initGL();
     void pushBack(const glm::vec3& pointPosition, const glm::vec3 &color = glm::vec3(1,1,1));
     void popFront();
+    void popFront_naive();
     void synchronizeVbos();
     void draw();
     void clearGL();

@@ -31,7 +31,7 @@ TrailManager::TrailManager(int texWidth, int texHeight, int trailCount, int trai
     _texHeight = texHeight;
 
     //default values for projection :
-    _camera.setOrthographicProjection(0, texWidth, 0, texHeight);
+    _camera.setOrthographicProjection(0, texWidth, texHeight, 0);
 
     // opengl initialization :
     _glProgram = createGlProgram(vertexShader, fragmentShader);
@@ -72,6 +72,18 @@ Camera& TrailManager::getCamera()
     return _camera;
 }
 
+Trail &TrailManager::getTrail(int idx)
+{
+    assert(idx >= 0 && idx < _trails.size());
+    return _trails[idx];
+}
+
+int TrailManager::getTrailCount() const
+{
+    return _trails.size();
+}
+
+
 void TrailManager::updateFromOpenCV(const cv::Mat& camToWorld, const std::vector<int>& markerId, const std::vector<cv::Vec<double, 3>>& currentMarkerPos)
 {
     for(int i = 0; i < std::min(markerId.size(), _trails.size()); i++)
@@ -85,8 +97,28 @@ void TrailManager::updateFromOpenCV(const cv::Mat& camToWorld, const std::vector
     }
 }
 
+
+void TrailManager::render()
+{
+    glClearColor(0,1,0,1);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+    glUseProgram(_glProgram);
+        glUniformMatrix4fv( _uniform_Projection , 1, false, glm::value_ptr(_camera.getProjectionMat()));
+        glUniformMatrix4fv( _uniform_View , 1, false, glm::value_ptr(_camera.getViewMat()));
+
+    for(int i = 0; i < _trails.size(); i++)
+        _trails[i].draw();
+}
+
 void TrailManager::renderToTexture()
 {
+    //glViewport(0, 0, _texWidth, _texHeight);
+    glClearColor(0,1,0,1);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+    glm::vec3 color = glm::vec3(rand()%255, rand()%255, rand()%255);
+    glClearColor(color.x/255.f,color.y/255.f,color.z/255.f,1);
     glViewport(0, 0, _texWidth, _texHeight);
     //draw
     glBindFramebuffer(GL_FRAMEBUFFER, _fbo);
@@ -127,4 +159,79 @@ void TrailManager::convertGlTexToCVMat(cv::Mat& cvMat)
         glReadPixels(0, 0, cvMat.cols, cvMat.rows, GL_BGR, GL_UNSIGNED_BYTE, cvMat.data);
 
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
+}
+
+void openglDrawCalls(void* userData)
+{
+    TrailManager* trailManager = static_cast<TrailManager*>(userData);
+    trailManager->getTrail(0).synchronizeVbos();
+    trailManager->render();
+}
+
+void CallBackMouseFunc(int event, int x, int y, int flags, void* userdata)
+{
+    TrailManager* trailManager = static_cast<TrailManager*>(userdata);
+
+     if ( event == cv::EVENT_MOUSEMOVE )
+     {
+          trailManager->getTrail(0).pushBack(glm::vec3(x, y, 0));
+          std::cout << "Mouse move over the window - position (" << x << ", " << y << ")" << std::endl;
+     }
+}
+int testDrawFollowingMouse()
+{
+    cv::namedWindow("window", cv::WINDOW_NORMAL|cv::WINDOW_OPENGL);
+    cv::resizeWindow("window", 800, 600);
+
+    // Initialize glew for OpenGL3+ support :
+    GLenum glewInitError = glewInit();
+    if(GLEW_OK != glewInitError) {
+        std::cerr << glewGetErrorString(glewInitError) << std::endl;
+        return EXIT_FAILURE;
+    }
+
+    std::cout << "OpenGL Version : " << glGetString(GL_VERSION) << std::endl;
+    std::cout << "GLEW Version : " << glewGetString(GLEW_VERSION) << std::endl;
+
+
+    //create TrailManager
+    int finalImgWidth = 800; // ???
+    int finalImgHeight = 600; // ???
+    TrailManager trailManager(finalImgWidth, finalImgHeight, 1, 128, 10);
+
+    //test loop :
+    bool leave = false;
+    double t = (double)cv::getTickCount();
+    //set the opengl context :
+    cv::setOpenGlContext("window");
+    cv::setOpenGlDrawCallback("window", openglDrawCalls, &trailManager);
+    while(!leave)
+    {
+        t = (double)cv::getTickCount();
+
+        //add point to trail :
+        cv::setMouseCallback("window", CallBackMouseFunc, &trailManager);
+
+        //TODO : opencv mapping to render the trails
+
+        //cv::ogl::Texture2D tex();
+        char key = (char) cv::waitKey(1);
+
+        //display the final image :
+        cv::updateWindow("window");
+
+        //update trail :
+        trailManager.getTrail(0).update();
+
+        if (key == 27)
+            break;
+
+        t = (double)(cv::getTickCount() - t)/cv::getTickFrequency();
+        std::cout << "Times passed in seconds: " << t << std::endl;
+        std::cout << "frame per second: " << 1.f / t << std::endl;
+    //        if(t < 1.f/30.f)
+    //        {
+    //            usleep(((1.f/30.f) - t)*1000);
+    //        }
+    }
 }

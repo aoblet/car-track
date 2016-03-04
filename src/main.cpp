@@ -7,6 +7,10 @@
 #include "markers.hpp"
 
 int main(int argc, char** argv) {
+
+    //testDrawFollowingMouse();
+
+
     cv::Mat cameraMatrix(cv::Mat::eye(3,3, CV_32F)), distCoeffs;
     DLOG(INFO) << "Matrix before calib " << cameraMatrix;
     calibrateCamera(cameraMatrix, distCoeffs);
@@ -82,5 +86,6 @@ int main(int argc, char** argv) {
         if (key == 27)
             break;
     }
+
     return 0;
 }

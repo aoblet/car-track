@@ -1,7 +1,7 @@
 #include "glCamera.hpp"
 
 
-Camera::Camera(CameraType cameraType) : _position(0,0,0), _cameraType(cameraType)
+Camera::Camera(CameraType cameraType) : _position(0,0,10), _cameraType(cameraType)
 {
     if(cameraType == CameraType::ORTHOGRAPHIC)
         _projectionMat = glm::ortho( 0.0f, (float)WINDOW_WIDTH, (float)WINDOW_HEIGHT, 0.0f, 0.001f, 100.f);
@@ -44,3 +44,4 @@ void Camera::setPosition(const glm::vec3& pos)
     _viewMat = glm::lookAt(_position, _position + glm::vec3(0,0,-1),  glm::vec3(0,1,0) );
     _modelMat = glm::translate(glm::mat4(1), _position);
 }
+

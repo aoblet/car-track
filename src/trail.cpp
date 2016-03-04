@@ -125,7 +125,7 @@ void Trail::pushBack(const glm::vec3& pointPosition, const glm::vec3& color)
 
         _backIndex = _trailPoints.size() - 1;
 
-        synchronizeVbos();
+        //synchronizeVbos();
     }
 
 }
@@ -140,6 +140,7 @@ void Trail::synchronizeVbos()
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, _ibo);
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, (_trailBuffer - 1) * 6 * sizeof(uint32_t), nullptr, GL_DYNAMIC_DRAW);
     glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, 0, _trailIndex.size() * sizeof(uint32_t), &_trailIndex[0]);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 }
 
 //Delete the first point put in the trail. (FIFO)
@@ -180,13 +181,21 @@ void Trail::popFront()
     _trailIndex[frontIndex_indices + 4] = ( frontIndex_vertices + 2 );
     _trailIndex[frontIndex_indices + 5] = ( frontIndex_vertices + 3 );
 
-    synchronizeVbos();
+    //synchronizeVbos();
 
     _frontIndex += 2;
     _backIndex = _frontIndex - 1;
     if(_frontIndex >= _trailPoints.size())
         _frontIndex = 0;
 
+}
+
+void Trail::popFront_naive()
+{
+    _trailPoints.erase(_trailPoints.begin(), _trailPoints.begin()+2);
+    _trailVertex.erase(_trailVertex.begin(), _trailVertex.begin()+4);
+    _trailIndex.erase(_trailIndex.begin(), _trailIndex.begin()+6);
+    _backIndex = _trailPoints.size() - 1;
 }
 
 void Trail::draw()
@@ -205,6 +214,9 @@ void Trail::clearGL()
 
 void Trail::update()
 {
+    //for(int i = 0; i < _trailPoints.size(); i++)
+    //    std::cout<<"point["<<i<<"] = "<<_trailPoints[i].x<<", "<<_trailPoints[i].y<<", "<<_trailPoints[i].z<<std::endl;
+
     if(_trailPoints.size() > _trailBuffer)
     {
         popFront();
