@@ -123,6 +123,9 @@ void TrailManager::render()
 
     for(int i = 0; i < _trails.size(); i++)
         _trails[i].draw();
+
+    if(_borders != nullptr)
+        _borders->draw();
 }
 
 void TrailManager::renderToTexture()
@@ -149,6 +152,8 @@ void TrailManager::renderToTexture()
 
 void TrailManager::updateCameraPos(const std::vector<cv::Vec3d>& corners, float cameraHeight)
 {
+    _borders = new Borders(corners, glm::vec3(1,1,1));
+
     glm::vec3 sum(0,0,0);
     for(int i = 0; i < corners.size(); i++){
         glm::vec3 t(corners[i][0], corners[i][2], corners[i][1]);
@@ -156,8 +161,8 @@ void TrailManager::updateCameraPos(const std::vector<cv::Vec3d>& corners, float 
     }
     sum /= corners.size();
 
-    _camera.setPosition(glm::vec3(sum.x, cameraHeight, sum.z));
-    _camera.setOrthographicProjection(-WINDOW_WIDTH*0.5f, WINDOW_WIDTH*0.5f, -WINDOW_HEIGHT*0.5f, WINDOW_HEIGHT*0.5f);
+    _camera.setPosition(glm::vec3(sum.x, sum.y, cameraHeight));
+    _camera.setOrthographicProjection/*(0, _texWidth, _texHeight, 0);*/(-_texWidth*0.5f, _texWidth*0.5f, -_texHeight*0.5f, _texHeight*0.5f);
 }
 
 void TrailManager::convertGlTexToCVMat(cv::Mat& cvMat)
@@ -220,6 +225,8 @@ int testDrawToTexture()
 {
     InputInfo inputInfo;
 
+    std::vector<cv::Vec3d> corners = {cv::Vec3d(400,300,0), cv::Vec3d(-400,300,0), cv::Vec3d(-400,-300,0), cv::Vec3d(400,-300,0)};
+
     cv::namedWindow("window", cv::WINDOW_NORMAL|cv::WINDOW_OPENGL);
     cv::resizeWindow("window", 800, 600);
 
@@ -241,7 +248,8 @@ int testDrawToTexture()
     int finalImgWidth = 800; // ???
     int finalImgHeight = 600; // ???
     TrailManager trailManager(finalImgWidth, finalImgHeight, 2, 128, 10);
-    cv::Mat trailImg(finalImgWidth, finalImgHeight, CV_8UC3);
+    trailManager.updateCameraPos(corners, 10);
+    cv::Mat trailImg(finalImgHeight, finalImgWidth, CV_8UC3);
 
     //test loop :
     bool leave = false;
@@ -282,7 +290,7 @@ int testDrawToTexture()
         //trailManager.convertGlTexToCVMat(trailImg);
         trailManager.convertWindowBufferToCVMat(trailImg);
         //the result img may be flipped :
-        //cv::flip(trailImg, trailImgFlipped, 0);
+        cv::flip(trailImg, trailImg, 0);
         //display the final image :
         cv::imshow("window2", trailImg);
 

@@ -17,6 +17,8 @@
 
 #include <opencv2/opencv.hpp>
 
+#include "borders.hpp"
+
 
 struct InputInfo{
     bool leftButtonDown;
@@ -38,6 +40,8 @@ private:
     GLuint _uniform_Projection;
     int _texWidth;
     int _texHeight;
+
+    Borders* _borders;
 
 public:
     TrailManager(int texWidth, int texHeight, int trailCount = 1, int trailBufferSize = 100, float trailWidth = 5);
