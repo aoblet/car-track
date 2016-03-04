@@ -1,14 +1,43 @@
 #include "trailManager.hpp"
 
+static const std::string  fragmentShader = "#version 330 core\n \
+        in vec3 vFragColor;\n \
+        in vec2 vUVCoord;\n \
+        out vec4 fFragColor;\n \
+        void main() {\n \
+            fFragColor = vec4(1,0,0/*vFragColor*/, 1);\n \
+        }";
 
-TrailManager::TrailManager(int texWidth, int texHeight, int trailCount, int trailBufferSize, float trailWidth)
+static const std::string vertexShader= "#version 330 core\n \
+        layout(location = 0) in vec3 VertexPosition;\n \
+        layout(location = 1) in vec3 VertexColor;\n \
+        layout(location = 2) in vec2 VertexUVCoord;\n \
+        out vec3 vFragColor;\n \
+        out vec2 vUVCoord;\n \
+        uniform mat4 ProjectionMatrix;\n \
+        uniform mat4 ViewMatrix;\n \
+        void main() {\n \
+            vFragColor = VertexColor;\n \
+            vUVCoord = VertexUVCoord;\n \
+            gl_Position = ProjectionMatrix * ViewMatrix * vec4(VertexPosition, 1);\n \
+        }";
+
+
+
+TrailManager::TrailManager(int texWidth, int texHeight, int trailCount, int trailBufferSize, float trailWidth):
+    _camera(Camera::CameraType::ORTHOGRAPHIC)
 {
     _texWidth = texWidth;
     _texHeight = texHeight;
 
+    //default values for projection :
+    _camera.setOrthographicProjection(0, texWidth, 0, texHeight);
+
     // opengl initialization :
-    _glProgram = loadProgram("/shaders/trail.vs.glsl",
-                                  "/shaders/trail.fs.glsl");
+    _glProgram = createGlProgram(vertexShader, fragmentShader);
+    _uniform_Projection = glGetUniformLocation(_glProgram, "ProjectionMatrix");
+    _uniform_View = glGetUniformLocation(_glProgram, "ViewMatrix");
+
 
     glGenTextures(1, &_renderTexture);
     glBindTexture(GL_TEXTURE_2D, _renderTexture);
@@ -63,9 +92,9 @@ void TrailManager::renderToTexture()
     glBindFramebuffer(GL_FRAMEBUFFER, _fbo);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-    _glProgram.use();
-        glUniformMatrix4fv( glGetUniformLocation(_glProgram.getGLId(), "ProjectionMatrix") , 1, false, glm::value_ptr(_camera.getProjectionMat()));
-        glUniformMatrix4fv( glGetUniformLocation(_glProgram.getGLId(), "ViewMatrix") , 1, false, glm::value_ptr(_camera.getViewMat()));
+    glUseProgram(_glProgram);
+        glUniformMatrix4fv( _uniform_Projection, 1, false, glm::value_ptr(_camera.getProjectionMat()));
+        glUniformMatrix4fv( _uniform_View, 1, false, glm::value_ptr(_camera.getViewMat()));
 
     for(int i = 0; i < _trails.size(); i++)
         _trails[i].draw();

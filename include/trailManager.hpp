@@ -24,7 +24,9 @@ private:
     Camera _camera;
     GLuint _fbo;
     GLuint _renderTexture;
-    Program _glProgram;
+    GLuint _glProgram;
+    GLuint _uniform_View;
+    GLuint _uniform_Projection;
     int _texWidth;
     int _texHeight;
 
