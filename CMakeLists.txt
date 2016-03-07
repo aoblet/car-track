@@ -8,12 +8,16 @@ find_package(OpenGL REQUIRED)
 find_package(OpenCV REQUIRED)
 find_package(GLOG REQUIRED)
 
+find_package(PkgConfig REQUIRED)
+pkg_search_module(GLFW REQUIRED glfw3)
+
 include_directories(
     ${GLM_INCLUDE_DIR}
     ${GLEW_INCLUDE_DIR}
     ${OpenGL_INCLUDE_DIR}
     ${OpenCV_INCLUDE_DIRS}
     ${GLOG_INCLUDE_DIRS}
+    ${GLFW_INCLUDE_DIRS}
 )
 
 include_directories(include)
@@ -21,10 +25,14 @@ include_directories(include)
 file(GLOB_RECURSE SRC_FILES src/*.cpp include/*.hpp include/*.h)
 add_executable(${PROJECT_EXE} ${SRC_FILES})
 
+add_subdirectory(lib)
+
 target_link_libraries(
     ${PROJECT_EXE}
     ${OPENGL_LIBRARIES}
     ${GLEW_LIBRARY}
     ${GLOG_LIBRARIES}
     ${OpenCV_LIBS}
+    ${GLFW_LIBRARIES}
+    IMGUI_LIBRARY
 )
