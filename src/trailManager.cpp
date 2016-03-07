@@ -135,7 +135,7 @@ void TrailManager::renderToTexture()
 
     //glm::vec3 color = glm::vec3(rand()%255, rand()%255, rand()%255);
     //glClearColor(color.x/255.f,color.y/255.f,color.z/255.f,1);
-    //glViewport(0, 0, _texWidth, _texHeight);
+    //glViewport(-_texWidth*0.5f, _texWidth*0.5f, -_texHeight*0.5f, _texHeight*0.5f);
     //draw
     glBindFramebuffer(GL_FRAMEBUFFER, _fbo);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -152,7 +152,6 @@ void TrailManager::renderToTexture()
 
 void TrailManager::updateCameraPos(const std::vector<cv::Vec3d>& corners, float cameraHeight)
 {
-    _borders = new Borders(corners, glm::vec3(1,1,1));
 
     glm::vec3 sum(0,0,0);
     for(int i = 0; i < corners.size(); i++){
@@ -161,8 +160,16 @@ void TrailManager::updateCameraPos(const std::vector<cv::Vec3d>& corners, float 
     }
     sum /= corners.size();
 
-    _camera.setPosition(glm::vec3(sum.x, sum.y, cameraHeight));
-    _camera.setOrthographicProjection/*(0, _texWidth, _texHeight, 0);*/(-_texWidth*0.5f, _texWidth*0.5f, -_texHeight*0.5f, _texHeight*0.5f);
+//    std::vector<glm::vec3> glmCorners;
+//    for(int i = 0; i < corners.size(); i++)
+//    {
+//        glmCorners.push_back( glm::vec3(corners[i][0] - _texWidth*0.5f, corners[i][1], corners[i][2] + _texHeight*0.5f) );
+//    }
+
+    _borders = new Borders(corners, glm::vec3(1,1,1));
+
+    _camera.setPosition(glm::vec3(0, 0, cameraHeight));
+    _camera.setOrthographicProjection(0, _texWidth, _texHeight, 0);//(-_texWidth*0.5f, _texWidth*0.5f, -_texHeight*0.5f, _texHeight*0.5f);
 }
 
 void TrailManager::convertGlTexToCVMat(cv::Mat& cvMat)
@@ -225,7 +232,7 @@ int testDrawToTexture()
 {
     InputInfo inputInfo;
 
-    std::vector<cv::Vec3d> corners = {cv::Vec3d(400,300,0), cv::Vec3d(-400,300,0), cv::Vec3d(-400,-300,0), cv::Vec3d(400,-300,0)};
+    std::vector<cv::Vec3d> corners = {cv::Vec3d(800,600,0), cv::Vec3d(0,600,0), cv::Vec3d(0,0,0), cv::Vec3d(800,0,0)};
 
     cv::namedWindow("window", cv::WINDOW_NORMAL|cv::WINDOW_OPENGL);
     cv::resizeWindow("window", 800, 600);

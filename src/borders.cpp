@@ -10,6 +10,17 @@ Borders::Borders(const std::vector<cv::Vec3d> corners, const glm::vec3& color)
     initGL();
 }
 
+Borders::Borders(const std::vector<glm::vec3> corners, const glm::vec3& color)
+{
+    for(int i = 0 ;i < corners.size(); i++)
+    {
+        _borderVertex.push_back( Vertex( corners[i], color) );
+    }
+
+    initGL();
+}
+
+
 void Borders::draw()
 {
     glLineWidth(10.f);

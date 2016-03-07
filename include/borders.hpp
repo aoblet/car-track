@@ -25,6 +25,7 @@ private:
     GLuint _vbo;
 public:
     Borders(const std::vector<cv::Vec3d> corners, const glm::vec3& color);
+    Borders(const std::vector<glm::vec3> corners, const glm::vec3& color);
     void draw();
     void initGL();
 };
