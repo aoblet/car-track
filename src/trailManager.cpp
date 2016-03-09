@@ -114,7 +114,7 @@ void TrailManager::synchronizeVBOTrails()
 
 void TrailManager::render()
 {
-    glClearColor(0,0,0,1);
+    glClearColor(0,0,0,0);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
     glUseProgram(_glProgram);
@@ -128,9 +128,41 @@ void TrailManager::render()
         _borders->draw();
 }
 
+void TrailManager::bind()
+{
+    glBindFramebuffer(GL_FRAMEBUFFER, _fbo);
+}
+
+
+void TrailManager::unBind()
+{
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+}
+
+void TrailManager::renderTrails()
+{
+    glUseProgram(_glProgram);
+        glUniformMatrix4fv( _uniform_Projection , 1, false, glm::value_ptr(_camera.getProjectionMat()));
+        glUniformMatrix4fv( _uniform_View , 1, false, glm::value_ptr(_camera.getViewMat()));
+
+    for(int i = 0; i < _trails.size(); i++)
+        _trails[i].draw();
+}
+
+void TrailManager::renderBorders()
+{
+    glUseProgram(_glProgram);
+        glUniformMatrix4fv( _uniform_Projection , 1, false, glm::value_ptr(_camera.getProjectionMat()));
+        glUniformMatrix4fv( _uniform_View , 1, false, glm::value_ptr(_camera.getViewMat()));
+
+
+    if(_borders != nullptr)
+        _borders->draw();
+}
+
 void TrailManager::renderToTexture()
 {
-    glClearColor(0,0,0,1);
+    glClearColor(0,0,0,0);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
     //glm::vec3 color = glm::vec3(rand()%255, rand()%255, rand()%255);
@@ -141,11 +173,14 @@ void TrailManager::renderToTexture()
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
     glUseProgram(_glProgram);
-        glUniformMatrix4fv( _uniform_Projection, 1, false, glm::value_ptr(_camera.getProjectionMat()));
-        glUniformMatrix4fv( _uniform_View, 1, false, glm::value_ptr(_camera.getViewMat()));
+        glUniformMatrix4fv( _uniform_Projection , 1, false, glm::value_ptr(_camera.getProjectionMat()));
+        glUniformMatrix4fv( _uniform_View , 1, false, glm::value_ptr(_camera.getViewMat()));
 
     for(int i = 0; i < _trails.size(); i++)
         _trails[i].draw();
+
+    if(_borders != nullptr)
+        _borders->draw();
 
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
@@ -193,6 +228,11 @@ void TrailManager::convertWindowBufferToCVMat(cv::Mat& cvMat)
     //set length of one complete row in destination data (doesn't need to equal img.cols)
     glPixelStorei(GL_PACK_ROW_LENGTH, cvMat.step/cvMat.elemSize());
     glReadPixels(0, 0, cvMat.cols, cvMat.rows, GL_BGR, GL_UNSIGNED_BYTE, cvMat.data);
+}
+
+GLuint TrailManager::getRenderTextureGLId() const
+{
+    return _renderTexture;
 }
 
 void openglDrawCalls(void* userData)

@@ -57,7 +57,11 @@ public:
     void updateCameraPos(const std::vector<cv::Vec3d>& corners, float cameraHeight = 10);
     void convertGlTexToCVMat(cv::Mat& cvMat);
     void convertWindowBufferToCVMat(cv::Mat& cvMat);
-
+    GLuint getRenderTextureGLId() const;
+    void bind();
+    void unBind();
+    void renderTrails();
+    void renderBorders();
 };
 
 void openglDrawCalls(void* userData);
