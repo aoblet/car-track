@@ -31,7 +31,8 @@ struct InputInfo{
 
 class TrailManager{
 private:
-    std::vector<Trail> _trails;
+    std::map<int, Trail> _trails;
+    std::map<int, glm::vec3> _trailsColors;
     Camera _camera;
     GLuint _fbo;
     GLuint _renderTexture;
@@ -44,12 +45,13 @@ private:
     Borders* _borders;
 
 public:
-    TrailManager(int texWidth, int texHeight, int trailCount = 1, int trailBufferSize = 100, float trailWidth = 5);
+    TrailManager(int texWidth, int texHeight, std::vector<int> trailkeys, std::vector<glm::vec3> trailColors, int trailBufferSize = 100, float trailWidth = 5);
 
     Camera& getCamera();
-    Trail& getTrail(int idx);
+    Trail& getTrail(int key);
     int getTrailCount() const;
-    void updateFromOpenCV(const cv::Mat& camToWorld, const std::vector<int>& markerId, const std::vector<cv::Vec<double, 3>>& currentMarkerPos);
+    //void updateFromOpenCV(const cv::Mat& camToWorld, const std::vector<int>& markerId, const std::vector<cv::Vec<double, 3>>& currentMarkerPos);
+    void updateTrailPositions(const std::vector<int>& markerIds, std::map<int, glm::vec2> &currentMarkerPos);
     void updateTrails();
     void synchronizeVBOTrails();
     void render();
@@ -62,6 +64,8 @@ public:
     void unBind();
     void renderTrails();
     void renderBorders();
+    int getTexWidth() const;
+    int getTexHeight() const;
 };
 
 void openglDrawCalls(void* userData);

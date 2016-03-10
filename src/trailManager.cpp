@@ -26,7 +26,7 @@ static const std::string vertexShader= "#version 330 core\n \
 
 
 
-TrailManager::TrailManager(int texWidth, int texHeight, int trailCount, int trailBufferSize, float trailWidth):
+TrailManager::TrailManager(int texWidth, int texHeight, std::vector<int> trailkeys, std::vector<glm::vec3> trailColors, int trailBufferSize, float trailWidth):
     _camera(Camera::CameraType::ORTHOGRAPHIC)
 {
     _texWidth = texWidth;
@@ -62,10 +62,19 @@ TrailManager::TrailManager(int texWidth, int texHeight, int trailCount, int trai
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
     // trail creation :
-    for(int i = 0; i < trailCount; i++)
+    if(trailkeys.size() > trailColors.size())
     {
-        _trails.push_back(Trail(trailWidth, trailBufferSize));
-        _trails[i].initGL();
+        for(int i = trailColors.size(); i < trailkeys.size(); i++)
+        {
+            trailColors.push_back(glm::vec3(1,1,1));
+        }
+    }
+    for(int i = 0; i < trailkeys.size(); i++)
+    {
+        _trails[trailkeys[i]] = Trail(trailWidth, trailBufferSize);
+        _trails[trailkeys[i]].initGL();
+
+        _trailsColors[trailkeys[i]] = trailColors[i];
     }
 }
 
@@ -74,10 +83,11 @@ Camera& TrailManager::getCamera()
     return _camera;
 }
 
-Trail &TrailManager::getTrail(int idx)
+Trail &TrailManager::getTrail(int key)
 {
-    assert(idx >= 0 && idx < _trails.size());
-    return _trails[idx];
+    assert(_trails.find(key) != _trails.end());
+
+    return _trails[key];
 }
 
 int TrailManager::getTrailCount() const
@@ -86,16 +96,27 @@ int TrailManager::getTrailCount() const
 }
 
 
-void TrailManager::updateFromOpenCV(const cv::Mat& camToWorld, const std::vector<int>& markerId, const std::vector<cv::Vec<double, 3>>& currentMarkerPos)
-{
-    for(int i = 0; i < std::min(markerId.size(), _trails.size()); i++)
-    {
-        cv::Vec3d tmp;
-        cv::transform(currentMarkerPos, tmp, camToWorld);
+//void TrailManager::updateFromOpenCV(const cv::Mat& camToWorld, const std::vector<int>& markerId, const std::vector<cv::Vec<double, 3>>& currentMarkerPos)
+//{
+//    for(int i = 0; i < std::min(markerId.size(), _trails.size()); i++)
+//    {
+//        cv::Vec3d tmp;
+//        cv::transform(currentMarkerPos, tmp, camToWorld);
 
-        //add a point a the trail :
-        _trails[i].pushBack(glm::vec3(tmp[0], tmp[2], tmp[1]));
-        _trails[i].update(); //automaticaly erase points at the end of trails.
+//        //add a point a the trail :
+//        _trails[i].pushBack(glm::vec3(tmp[0], tmp[2], tmp[1]));
+//        _trails[i].update(); //automaticaly erase points at the end of trails.
+//    }
+//}
+
+void TrailManager::updateTrailPositions(const std::vector<int>& markerIds, std::map<int, glm::vec2> &currentMarkerPos)
+{
+    for(int i = 0; i < markerIds.size(); i++)
+    {
+        if(_trails.find(markerIds[i]) != _trails.end())
+        {
+            _trails[markerIds[i]].pushBack(glm::vec3(currentMarkerPos[markerIds[i]].x, currentMarkerPos[markerIds[i]].y, 0), _trailsColors[markerIds[i]]);
+        }
     }
 }
 
@@ -141,6 +162,8 @@ void TrailManager::unBind()
 
 void TrailManager::renderTrails()
 {
+    glViewport(0, 0, _texWidth, _texHeight);
+
     glUseProgram(_glProgram);
         glUniformMatrix4fv( _uniform_Projection , 1, false, glm::value_ptr(_camera.getProjectionMat()));
         glUniformMatrix4fv( _uniform_View , 1, false, glm::value_ptr(_camera.getViewMat()));
@@ -151,6 +174,8 @@ void TrailManager::renderTrails()
 
 void TrailManager::renderBorders()
 {
+    glViewport(0, 0, _texWidth, _texHeight);
+
     glUseProgram(_glProgram);
         glUniformMatrix4fv( _uniform_Projection , 1, false, glm::value_ptr(_camera.getProjectionMat()));
         glUniformMatrix4fv( _uniform_View , 1, false, glm::value_ptr(_camera.getViewMat()));
@@ -158,6 +183,16 @@ void TrailManager::renderBorders()
 
     if(_borders != nullptr)
         _borders->draw();
+}
+
+int TrailManager::getTexWidth() const
+{
+    return _texWidth;
+}
+
+int TrailManager::getTexHeight() const
+{
+    return _texHeight;
 }
 
 void TrailManager::renderToTexture()
@@ -204,7 +239,8 @@ void TrailManager::updateCameraPos(const std::vector<cv::Vec3d>& corners, float 
     _borders = new Borders(corners, glm::vec3(1,1,1));
 
     _camera.setPosition(glm::vec3(0, 0, cameraHeight));
-    _camera.setOrthographicProjection(0, _texWidth, _texHeight, 0);//(-_texWidth*0.5f, _texWidth*0.5f, -_texHeight*0.5f, _texHeight*0.5f);
+    //_camera.setOrthographicProjection(0, _texWidth, _texHeight, 0);//(-_texWidth*0.5f, _texWidth*0.5f, -_texHeight*0.5f, _texHeight*0.5f);
+    _camera.setOrthographicProjection(-1, 1, -1, 1);
 }
 
 void TrailManager::convertGlTexToCVMat(cv::Mat& cvMat)
@@ -294,7 +330,7 @@ int testDrawToTexture()
     //create TrailManager
     int finalImgWidth = 800; // ???
     int finalImgHeight = 600; // ???
-    TrailManager trailManager(finalImgWidth, finalImgHeight, 2, 128, 10);
+    TrailManager trailManager(finalImgWidth, finalImgHeight, {0, 1}, {glm::vec3(1,0,0), glm::vec3(0,1,0)}, 128, 10);
     trailManager.updateCameraPos(corners, 10);
     cv::Mat trailImg(finalImgHeight, finalImgWidth, CV_8UC3);
 
@@ -380,7 +416,7 @@ int testDrawFollowingMouse()
     //create TrailManager
     int finalImgWidth = 800; // ???
     int finalImgHeight = 600; // ???
-    TrailManager trailManager(finalImgWidth, finalImgHeight, 2, 128, 10);
+    TrailManager trailManager(finalImgWidth, finalImgHeight, {0, 1}, {glm::vec3(1,0,0), glm::vec3(0,1,0)}, 128, 10);
 
     //test loop :
     bool leave = false;

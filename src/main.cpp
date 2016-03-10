@@ -60,7 +60,9 @@ int main(int argc, char** argv) {
     //set window size :
     int width = 1280, height= 720;
     //set corners position :
-    std::vector<cv::Vec3d> corners = {cv::Vec3d(width,height,0), cv::Vec3d(0,height,0), cv::Vec3d(0,0,0), cv::Vec3d(width,0,0)};
+    std::vector<cv::Vec3d> corners = {cv::Vec3d(1,1,0), cv::Vec3d(-1,1,0), cv::Vec3d(-1,-1,0), cv::Vec3d(1,-1,0)};//{cv::Vec3d(width,height,0), cv::Vec3d(0,height,0), cv::Vec3d(0,0,0), cv::Vec3d(width,0,0)};
+    bool drawBackground = true;
+    bool drawBorders = true;
 
     // Initialise GLFW
     if( !glfwInit() )
@@ -211,7 +213,8 @@ int main(int argc, char** argv) {
 
     int finalImgWidth = width; // ???
     int finalImgHeight = height; // ???
-    TrailManager trailManager(finalImgWidth, finalImgHeight, 1, 128, 10);
+    std::vector<int> trailsMarkerIds = {0,1};
+    TrailManager trailManager(finalImgWidth, finalImgHeight, trailsMarkerIds, {glm::vec3(1,0,0), glm::vec3(0,1,0)}, 128, 0.1);
     trailManager.updateCameraPos(corners, 10);
     //cv::Mat trailImg(finalImgHeight, finalImgWidth, CV_8UC3);
     Timer trailTimer;
@@ -246,11 +249,11 @@ int main(int argc, char** argv) {
         //--------------------------------------------------------------------------------------------------------
 
         //Get marker positions ------------------------------------------------------------------------------------
-        std::vector<int> fakeIds;
+        std::vector<int> markerIds;
         std::vector< std::vector<cv::Point2f> > markerCorners;
-        cv::aruco::detectMarkers(captureImage, board->dictionary, markerCorners, fakeIds);
+        cv::aruco::detectMarkers(captureImage, board->dictionary, markerCorners, markerIds);
         //markerCenters will contains the center of each marker.
-        std::vector<glm::vec2> markerCenters;
+        std::map<int, glm::vec2> markerCenters;
         for(int i = 0; i < markerCorners.size(); i++)
         {
             //get center of each corner :
@@ -261,14 +264,25 @@ int main(int argc, char** argv) {
             }
             sum /= markerCorners[i].size();
 
-            markerCenters.push_back(sum);
-            std::cout<<"marker detected at position : ("<<markerCenters.back().x<<", "<<markerCenters.back().y<<")"<<std::endl;
+            //convert to [-1 1] :
+            float markerX = (sum.x / capWidth) * 2 - 1;
+            float markerY =  ((sum.y / capHeight)) * 2 - 1;
+
+            markerCenters[markerIds[i]] = glm::vec2(markerX, markerY);
+            std::cout<<"marker detected at position : ("<<sum.x<<", "<<sum.y<<")"<<std::endl;
         }
 
         // Draw in cvTexture ---------------------------------------------------------------------------------------
 
-        if(fakeIds.size() > 0) {
-            cv::aruco::drawDetectedMarkers(captureImage, markerCorners, fakeIds);
+        if(markerIds.size() > 0) {
+//            for(int i = 0; i < markerCorners.size(); i++)
+//            {
+//                for(int j = 0; j < markerCorners[i].size(); j++)
+//                    markerCorners[i][j] = cv::Point2d( markerCorners[i][j].x/(float)capWidth, markerCorners[i][j].y/(float)capHeight);
+
+//            }
+
+            cv::aruco::drawDetectedMarkers(captureImage, markerCorners, markerIds);
         }
 
         glBindTexture(GL_TEXTURE_2D, cvTexture);
@@ -290,13 +304,18 @@ int main(int argc, char** argv) {
 //            }
 //        }
         //add point to trail base on the first marker position :
-        if(trailTimer.elapsedTime() > 0.003f && markerCenters.size() >0)
+        if(trailTimer.elapsedTime() > 0.003f )
         {
-            float markerX = (markerCenters[0].x / capWidth)*width;
-            float markerY =  height-(markerCenters[0].y / capHeight)*height;
 
-            std::cout<<"add point to trail at position : ("<<markerX<<", "<<markerY<<")"<<std::endl;
-            trailManager.getTrail(0).pushBack(glm::vec3(markerX, markerY, 0), glm::vec3(1,0,0));
+            //float markerX = (markerCenters[0].x / capWidth)*width;
+            //float markerY =  height-(markerCenters[0].y / capHeight)*height;
+
+//          if(std::find(markerIds.begin(), markerIds.end(), trailsMarkerIds[0]) != markerIds.end())
+//          {
+//            std::cout<<"add point to trail at position : ("<<markerCenters[trailsMarkerIds[0]].x<<", "<<markerCenters[trailsMarkerIds[0]].y<<")"<<std::endl;
+//            trailManager.getTrail(trailsMarkerIds[0]).pushBack(glm::vec3(markerCenters[trailsMarkerIds[0]].x, markerCenters[trailsMarkerIds[0]].y, 0), glm::vec3(1,0,0));
+//          }
+            trailManager.updateTrailPositions(markerIds, markerCenters);
             trailTimer.restart();
         }
 
@@ -308,16 +327,21 @@ int main(int argc, char** argv) {
         trailManager.synchronizeVBOTrails();
         //trailManager.renderToTexture();
         trailManager.bind();
+        glViewport(0,0,trailManager.getTexWidth(), trailManager.getTexHeight());
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-            //draw background :
-            quadProgram.useProgram();
-            glBindBuffer(GL_ARRAY_BUFFER, quadVBOVertices);
-            glBufferData(GL_ARRAY_BUFFER, quadVertices.size() * sizeof(glm::vec2), quadVertices.data(), GL_STATIC_DRAW);
-            glBindVertexArray(quadVAO);
-            glBindTexture(GL_TEXTURE_2D, cvTexture);
-            glDrawElements(GL_TRIANGLES, quad_triangleCount * 3, GL_UNSIGNED_INT, (void*)0);
+        if(drawBackground)
+        {
+                //draw background :
+                quadProgram.useProgram();
+                glBindBuffer(GL_ARRAY_BUFFER, quadVBOVertices);
+                glBufferData(GL_ARRAY_BUFFER, quadVertices.size() * sizeof(glm::vec2), quadVertices.data(), GL_STATIC_DRAW);
+                glBindVertexArray(quadVAO);
+                glBindTexture(GL_TEXTURE_2D, cvTexture);
+                glDrawElements(GL_TRIANGLES, quad_triangleCount * 3, GL_UNSIGNED_INT, (void*)0);
+        }
         trailManager.renderTrails();
-        trailManager.renderBorders();
+        if(drawBorders)
+            trailManager.renderBorders();
         trailManager.unBind();
 
         //---------------------------------------------------------------------------------------------
@@ -353,6 +377,7 @@ int main(int argc, char** argv) {
 
         // Find Draw -------------------------------------------------------------------------------------------------------------------------------
         glEnable(GL_BLEND);
+        //glViewport(0, 0, width, height);
         glViewport(0, 0, width, height);
 
         glBindBuffer(GL_ARRAY_BUFFER, quadVBOVertices);
@@ -377,6 +402,11 @@ int main(int argc, char** argv) {
 
         imguiBeginScrollArea("car-track", width - xwidth - 10, height - ywidth - 10, xwidth, ywidth, &logScroll);
         sprintf(lineBuffer, "FPS %f", fps);
+        if(imguiCheck("draw background", drawBackground))
+            drawBackground = !drawBackground;
+        if(imguiCheck("draw borders", drawBorders))
+            drawBorders = !drawBorders;
+
         imguiLabel(lineBuffer);
 
         for(auto& vec : quadVertices){
