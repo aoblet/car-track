@@ -346,7 +346,7 @@ int main(int argc, char** argv) {
     bool fullscreen = false;
     bool keypressed = false;
 
-    bool drawImgui = false;
+    bool drawImgui = true;
 
     // Create TrailManager --------------------------------------------------------------------------------------------------------------------
 
@@ -440,23 +440,23 @@ int main(int argc, char** argv) {
 
         //---------------------------------------------------------------------------------------------
 
-        glEnable(GL_DEPTH_TEST);
-        glEnable(GL_BLEND);
-        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+//        glEnable(GL_DEPTH_TEST);
+//        glEnable(GL_BLEND);
+//        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+//        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         // Find Draw -------------------------------------------------------------------------------------------------------------------------------
 
 
         trailManager.bind();
-            glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+//            glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
             glViewport(0, 0, trailManager.getTexWidth(), trailManager.getTexHeight());
 
             flatifyProgram.useProgram();
             glBindVertexArray(flatifyVAO);
             glBindTexture(GL_TEXTURE_2D, cvTexture);
-//            glDrawElements(GL_TRIANGLES, quad_triangleCount * 3, GL_UNSIGNED_INT, (void*)0);
+            glDrawElements(GL_TRIANGLES, quad_triangleCount * 3, GL_UNSIGNED_INT, (void*)0);
 
             trailManager.renderTrails();
 
@@ -502,33 +502,30 @@ int main(int argc, char** argv) {
         imguiBeginFrame(mousex, mousey, mbut, mscroll);
         char lineBuffer[512];
 
-        float xwidth = drawImgui ? 300 : 0;
-        float ywidth = drawImgui ? 500 : 0;
-        imguiBeginScrollArea(drawImgui ? "car-track" : "", (width - xwidth - 10), (height - ywidth - 10), xwidth, ywidth, &logScroll);
+        float xwidth = 300;
+        float ywidth = 500;
 
-        if(drawImgui){
-            sprintf(lineBuffer, "FPS %f", fps);
-            if(imguiCheck("draw background", drawBackground))
-                drawBackground = !drawBackground;
-            if(imguiCheck("draw borders", drawBorders))
-                drawBorders = !drawBorders;
+        imguiBeginScrollArea("car-track", width - xwidth - 10, height - ywidth - 10, xwidth, ywidth, &logScroll);
+        sprintf(lineBuffer, "FPS %f", fps);
+        if(imguiCheck("draw background", drawBackground))
+            drawBackground = !drawBackground;
+        if(imguiCheck("draw borders", drawBorders))
+            drawBorders = !drawBorders;
 
-            imguiLabel(lineBuffer);
+        imguiLabel(lineBuffer);
 
-            for(auto& vec : quadVertices){
-                imguiSeparatorLine();
-                imguiSlider("x", &vec.x, -1, 1, 0.01);
-                imguiSlider("y", &vec.y, -1, 1, 0.01);
-            }
-
+        for(auto& vec : quadVertices){
+            imguiSeparatorLine();
+            imguiSlider("x", &vec.x, -1, 1, 0.01);
+            imguiSlider("y", &vec.y, -1, 1, 0.01);
         }
+
         imguiEndScrollArea();
 
         imguiEndFrame();
         imguiRenderGLDraw(width, height);
 
         glDisable(GL_BLEND);
-        glEnable(GL_DEPTH_TEST);
 
 
 

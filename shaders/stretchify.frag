@@ -16,6 +16,6 @@ void main(void)
     texcoord /= texcoord.z;
     texcoord = texcoord * 0.5 + 0.5;
 
-//    Color = texture(Texture, texcoord.xy);
     Color = texture(Texture, texcoord.xy);
+//    Color = vec4(0,1,0,1);
 }
