@@ -1,5 +1,7 @@
 #pragma once
 
+#include "opencv2/opencv.hpp"
+
 //glm
 #include <glm/common.hpp>
 #include <glm/glm.hpp>
@@ -17,6 +19,8 @@
 #include <sstream>
 
 GLuint createGlProgram(const std::string& vertexSource, const std::string& fragmentSource);
+
+glm::mat3 convertCVMatrix3x3(cv::Mat cvmat);
 
 
 //////////////////////////////////////////////

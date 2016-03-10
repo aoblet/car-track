@@ -23,42 +23,131 @@ int main(int argc, char** argv) {
     //testDrawFollowingMouse();
     //testDrawToTexture();
 
-//    cv::Mat cameraMatrix(cv::Mat::eye(3,3, CV_32F)), distCoeffs;
-//    DLOG(INFO) << "Matrix before calib " << cameraMatrix;
-//    calibrateCamera(cameraMatrix, distCoeffs);
-//
-//    DLOG(INFO) << "Matrix after calib " << cameraMatrix;
-//    DLOG(INFO) << "Dist coeffs after calib " << distCoeffs;
-//
-//    DLOG(INFO) << "Start trail engine stuff...";
-//
-//    cv::VideoCapture inputVideo(-1);
-//    if(!inputVideo.open(-1))
-//        throw;
-//
-//    const cv::Mat camToWorld = cameraMatrix.inv();
-//    cv::Ptr<cv::aruco::Dictionary> dictionary = cv::aruco::getPredefinedDictionary(cv::aruco::DICT_5X5_50);
-//
-//    // get corner positions
-//    std::vector<cv::Vec3d> positionsBorders;
-//    while(inputVideo.grab()){
-//        cv::Mat image, imageCopy;
-//        inputVideo.retrieve(image);
-//        image.copyTo(imageCopy);
-//
-//        if(getBordersPositionsWorld(imageCopy, dictionary, positionsBorders, cameraMatrix, distCoeffs, true)){
-//            DLOG(INFO) << "Borders found";
-////            break;
-//        }
-//        cv::imshow("out", imageCopy);
-//
-//        char key = (char) cv::waitKey(1);
-//        if (key == 27)
-//            break;
-//    }
+    cv::VideoCapture inputVideo(-1);
+    if(!inputVideo.open(-1))
+        throw;
+
+    cv::Ptr<cv::aruco::Dictionary> dictionary = cv::aruco::getPredefinedDictionary(cv::aruco::DICT_5X5_50);
+    std::vector<std::vector<cv::Point2f>> markersCorners;
+    std::vector<int> markersIds;
+
+//    cv::Mat frame = cv::imread("image.png");
+//    getBordersScreenPositions(frame, dictionary, markersCorners, markersIds, true);
+//    cv::imshow("out", frame);
+//    char key = (char) cv::waitKey(0);
+
+    while(inputVideo.grab()){
+        cv::Mat image, imageCopy;
+        inputVideo.retrieve(image);
+        image.copyTo(imageCopy);
+
+        getBordersScreenPositions(imageCopy, dictionary, markersCorners, markersIds, true);
+
+        cv::imshow("out", imageCopy);
+
+        char key = (char) cv::waitKey(1);
+        if (key == 27 && markersIds.size() == 4){
+            break;
+        }
+    }
+
+    float camWidth = inputVideo.get(CV_CAP_PROP_FRAME_WIDTH);
+    float camHeight = inputVideo.get(CV_CAP_PROP_FRAME_HEIGHT);
+
+    DLOG(INFO) << "CAM_W : " << camWidth;
+    DLOG(INFO) << "CAM_H : " << camHeight;
+
+    std::vector<cv::Point2f> bordersPositions;
+    std::vector<cv::Point2f> bordersPositionsOrdered;
+    std::vector<cv::Point2f> bordersUvs;
+    std::vector<cv::Point2f> bordersUvsOrdered;
+
+    bordersPositionsOrdered.resize(4);
+    bordersUvsOrdered.resize(4);
+
+    getMarkersCenters(markersCorners, markersIds, bordersPositions);
+
+    for(auto& bordersPos : bordersPositions){
+        bordersUvs.push_back(cv::Point2f(bordersPos.x / camWidth, bordersPos.y/camHeight));
+    }
+
+    for(int i = 0; i < markersIds.size(); ++i){
+        bordersPositionsOrdered[markersIds[i]] = bordersPositions[i];
+        bordersUvsOrdered[markersIds[i]] = bordersUvs[i];
+    }
+
+    DLOG(INFO) << "UNORDERED : ";
+    for(int i = 0; i < markersIds.size(); ++i){
+        DLOG(INFO) << "ID:";
+        DLOG(INFO) << markersIds[i];
+        DLOG(INFO) << "BORDER POS:";
+        DLOG(INFO) << bordersPositions[i].x << " " << bordersPositions[i].y;
+        DLOG(INFO) << "BORDER UV:";
+        DLOG(INFO) << bordersUvs[i].x << " " << bordersUvs[i].y;
+    }
+
+    bordersPositions = bordersPositionsOrdered;
+    bordersUvs = bordersUvsOrdered;
+
+    DLOG(INFO) << "-------------------------------------------------";
+    DLOG(INFO) << "ORDERED : ";
+    for(int i = 0; i < markersIds.size(); ++i){
+        DLOG(INFO) << "ID:";
+        DLOG(INFO) << i;
+        DLOG(INFO) << "BORDER POS:";
+        DLOG(INFO) << bordersPositions[i].x << " " << bordersPositions[i].y;
+        DLOG(INFO) << "BORDER UV:";
+        DLOG(INFO) << bordersUvs[i].x << " " << bordersUvs[i].y;
+    }
+
+    std::vector<cv::Point2f> bordersTargetPositions = {
+            cv::Point2f(-1.0f, +1.0f), // id = 0
+            cv::Point2f(-1.0f, -1.0f), // id = 1
+            cv::Point2f(+1.0f, -1.0f), // id = 2
+            cv::Point2f(+1.0f, +1.0f), // id = 3
+    };
+
+    std::vector<cv::Point2f> bordersTargetUvs = {
+            cv::Point2f(0, 1), // id = 0
+            cv::Point2f(0, 0), // id = 1
+            cv::Point2f(1, 0), // id = 2
+            cv::Point2f(1, 1), // id = 3
+    };
+
+    glm::mat3 glBordersHomography;
+    cv::Mat cvBordersHomography;
+
+    glm::mat3 glBordersHomography2;
+    cv::Mat cvBordersHomography2;
+
+
+    bool inverse = true;
+
+    cvBordersHomography = cv::findHomography(bordersTargetPositions, bordersPositions);
+    glBordersHomography = convertCVMatrix3x3(cvBordersHomography);
+
+    cvBordersHomography2 = cv::findHomography(bordersUvs, bordersTargetUvs);
+    glBordersHomography2 = convertCVMatrix3x3(cvBordersHomography2);
+
+
+    DLOG(INFO) << "HOMOGRAPHY";
+    for(auto& point : bordersUvs){
+        glm::vec3 toto(glBordersHomography2 * glm::vec3(point.x, point.y,1));
+        toto/=toto.z;
+        DLOG(INFO) << point << " TO " << glm::to_string(toto);
+    }
+
+    DLOG(INFO) << "HOMOGRAPHY_INV";
+    for(auto& point : bordersTargetUvs){
+        glm::vec3 toto(glm::inverse(glBordersHomography2) * glm::vec3(point.x, point.y,1));
+        toto/=toto.z;
+        DLOG(INFO) << point << " TO " << glm::to_string(toto);
+    }
+
+//    return 0;
 
     //set window size :
-    int width = 1280, height= 720;
+    int width = 640, height= 480;
     //set corners position :
     std::vector<cv::Vec3d> corners = {cv::Vec3d(width,height,0), cv::Vec3d(0,height,0), cv::Vec3d(0,0,0), cv::Vec3d(width,0,0)};
 
@@ -177,9 +266,9 @@ int main(int argc, char** argv) {
 
     // Launch capture -------------------------------------------------------------------------------------------------------------------------------
 
-    cv::VideoCapture inputVideo(1);
-    if(!inputVideo.open(1))
-        throw;
+//    cv::VideoCapture inputVideo(1);
+//    if(!inputVideo.open(1))
+//        throw;
 
     cv::Mat captureImage;
 
@@ -217,7 +306,7 @@ int main(int argc, char** argv) {
     Timer trailTimer;
 
     // Set up Aruco -------------------------------------------------------------------------------------------------------------
-    cv::Ptr<cv::aruco::Dictionary> dictionary = cv::aruco::getPredefinedDictionary(cv::aruco::DICT_5X5_50);
+//    cv::Ptr<cv::aruco::Dictionary> dictionary = cv::aruco::getPredefinedDictionary(cv::aruco::DICT_5X5_50);
     cv::Ptr<cv::aruco::CharucoBoard> board = cv::aruco::CharucoBoard::create(7, 5, 1, 0.5, dictionary);
 
     do
@@ -241,7 +330,7 @@ int main(int argc, char** argv) {
         glfwGetWindowSize(window, &width, &height);
         inputVideo >> captureImage;
 
-        cv::flip(captureImage, captureImage, -1);
+//        cv::flip(captureImage, captureImage, 0);
 
         //--------------------------------------------------------------------------------------------------------
 
@@ -349,7 +438,8 @@ int main(int argc, char** argv) {
             }
         }
 
-        quadProgram.updateUniform("Homography", glHomography);
+//        quadProgram.updateUniform("Homography", glHomography);
+        quadProgram.updateUniform("Homography", glBordersHomography2);
 
         // Find Draw -------------------------------------------------------------------------------------------------------------------------------
         glEnable(GL_BLEND);
@@ -359,7 +449,8 @@ int main(int argc, char** argv) {
         glBufferData(GL_ARRAY_BUFFER, quadVertices.size() * sizeof(glm::vec2), quadVertices.data(), GL_STATIC_DRAW);
 
         glBindVertexArray(quadVAO);
-        glBindTexture(GL_TEXTURE_2D, trailManager.getRenderTextureGLId());
+//        glBindTexture(GL_TEXTURE_2D, trailManager.getRenderTextureGLId());
+        glBindTexture(GL_TEXTURE_2D, cvTexture);
         glDrawElements(GL_TRIANGLES, quad_triangleCount * 3, GL_UNSIGNED_INT, (void*)0);
 
         // Draw UI
@@ -431,6 +522,7 @@ int main(int argc, char** argv) {
     } while(glfwGetKey( window, GLFW_KEY_ESCAPE ) != GLFW_PRESS && !glfwWindowShouldClose(window));
 
     glfwTerminate();
+
 
 //    //create TrailManager
 //    int finalImgWidth = 800; // ???

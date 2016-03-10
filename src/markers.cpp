@@ -61,6 +61,46 @@ void getMarkersPositionsPerFrameWorld(cv::Mat &imageInput, cv::Ptr<cv::aruco::Di
         cv::aruco::drawAxis(imageInput, cameraMatrix, distortionCoeffs, rvecs[i], positions[i], 0.1);
 }
 
+
+void getBordersScreenPositions(cv::Mat &imageInput, cv::Ptr<cv::aruco::Dictionary> &dictMarkers,
+                               std::vector<std::vector<cv::Point2f>> &corners, std::vector<int> &ids, bool drawAxis) {
+    ids.clear();
+    corners.clear();
+    cv::aruco::detectMarkers(imageInput, dictMarkers, corners, ids);
+
+    // if at least one marker detected
+    if (ids.size() == 0)
+        return;
+
+    if(!drawAxis)
+        return;
+
+    cv::aruco::drawDetectedMarkers(imageInput, corners, ids);
+}
+
+
+void getMarkersCenters(std::vector<std::vector<cv::Point2f>> &corners, std::vector<int> &ids,
+                       std::vector<cv::Point2f> &centers) {
+    centers.clear();
+    for(int i = 0; i < ids.size(); ++i){
+        cv::Point2f center = getCenterFromCorners(corners[i]);
+        DLOG(INFO) << "center :" << center;
+        centers.push_back(center);
+    }
+}
+
+cv::Point2f getCenterFromCorners(std::vector<cv::Point2f> &corners) {
+    cv::Point2f center(0,0);
+
+    for(auto& corner : corners){
+        center += corner;
+    }
+
+    center /= 4;
+
+    return center;
+}
+
 bool getBordersPositionsWorld(cv::Mat &imageInput, cv::Ptr<cv::aruco::Dictionary> &dictMarkers,
                               std::vector<cv::Vec3d> &positions, cv::Mat &cameraMatrix, cv::Mat &distortionCoeffs,
                               bool drawAxis) {
