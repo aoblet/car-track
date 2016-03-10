@@ -11,9 +11,15 @@ layout(location = 0, index = 0) out vec4  Color;
 
 void main(void)
 {
-    vec2 pos = In.Position;
-    vec3 texcoord = inverse(Homography) * vec3(pos, 1);
+//    vec2 pos = In.Position;
+//    vec3 texcoord = inverse(Homography) * vec3(pos, 1);
+//    texcoord /= texcoord.z;
+//    texcoord = texcoord * 0.5 + 0.5;
+//    Color = texture(Texture, texcoord.xy);
+
+    vec2 coord = In.Texcoord;
+    vec3 texcoord = inverse(Homography) * vec3(coord, 1);
     texcoord /= texcoord.z;
-    texcoord = texcoord * 0.5 + 0.5;
+
     Color = texture(Texture, texcoord.xy);
 }

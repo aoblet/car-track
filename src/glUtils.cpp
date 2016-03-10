@@ -1,6 +1,16 @@
 # include "glUtils.hpp"
 
+glm::mat3 convertCVMatrix3x3(cv::Mat cvmat) {
 
+    glm::mat3 glmat;
+
+    for(int i = 0; i < cvmat.rows; ++i){
+        for(int j = 0; j < cvmat.cols; ++j){
+            glmat[j][i] = float(cvmat.at<double>(i,j));
+        }
+    }
+    return glmat;
+}
 
 GLuint createGlProgram(const std::string& vertexSource, const std::string& fragmentSource)
 {
