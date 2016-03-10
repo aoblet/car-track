@@ -2,7 +2,7 @@
 #include <unistd.h>
 #include "trailManager.hpp"
 
-static const std::string  fragmentShader = "#version 330 core\n \
+static const std::string  fragmentShader = "#version 300 core\n \
         in vec3 vFragColor;\n \
         in vec2 vUVCoord;\n \
         out vec4 fFragColor;\n \
@@ -10,7 +10,7 @@ static const std::string  fragmentShader = "#version 330 core\n \
             fFragColor = vec4(vFragColor, 1);\n \
         }";
 
-static const std::string vertexShader= "#version 330 core\n \
+static const std::string vertexShader= "#version 300 core\n \
         layout(location = 0) in vec3 VertexPosition;\n \
         layout(location = 1) in vec3 VertexColor;\n \
         layout(location = 2) in vec2 VertexUVCoord;\n \
@@ -162,7 +162,7 @@ void TrailManager::unBind()
 
 void TrailManager::renderTrails()
 {
-    glViewport(0, 0, _texWidth, _texHeight);
+    //glViewport(0, 0, _texWidth, _texHeight);
 
     glUseProgram(_glProgram);
         glUniformMatrix4fv( _uniform_Projection , 1, false, glm::value_ptr(_camera.getProjectionMat()));
