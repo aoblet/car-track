@@ -84,7 +84,6 @@ void getMarkersCenters(std::vector<std::vector<cv::Point2f>> &corners, std::vect
     centers.clear();
     for(int i = 0; i < ids.size(); ++i){
         cv::Point2f center = getCenterFromCorners(corners[i]);
-        DLOG(INFO) << "center :" << center;
         centers.push_back(center);
     }
 }

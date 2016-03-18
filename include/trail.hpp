@@ -38,6 +38,9 @@ public:
 
     void setTrailWidth(float trailWidth);
 
+    //used for fullscreen toggle
+    void reInitGL();
+
     void initGL();
     void pushBack(const glm::vec3& pointPosition, const glm::vec3 &color = glm::vec3(1,1,1));
     void popFront();

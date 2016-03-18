@@ -14,9 +14,6 @@ glm::mat3 convertCVMatrix3x3(cv::Mat cvmat) {
 
 GLuint createGlProgram(const std::string& vertexSource, const std::string& fragmentSource)
 {
-    std::cout<<"vertex source = "<<vertexSource<<std::endl;
-    std::cout<<"fragment source = "<<fragmentSource<<std::endl;
-
     //Create an empty vertex shader handle
     GLuint vertexShader = glCreateShader(GL_VERTEX_SHADER);
 

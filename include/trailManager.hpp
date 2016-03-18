@@ -47,6 +47,9 @@ private:
 public:
     TrailManager(int texWidth, int texHeight, std::vector<int> trailkeys, std::vector<glm::vec3> trailColors, int trailBufferSize = 100, float trailWidth = 5);
 
+    // called on fullscreen toggle
+    void reInit();
+
     Camera& getCamera();
     Trail& getTrail(int key);
     int getTrailCount() const;

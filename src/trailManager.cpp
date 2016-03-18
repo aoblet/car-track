@@ -64,18 +64,40 @@ TrailManager::TrailManager(int texWidth, int texHeight, std::vector<int> trailke
     // trail creation :
     if(trailkeys.size() > trailColors.size())
     {
-        for(int i = trailColors.size(); i < trailkeys.size(); i++)
+        for(size_t i = trailColors.size(); i < trailkeys.size(); i++)
         {
             trailColors.push_back(glm::vec3(1,1,1));
         }
     }
-    for(int i = 0; i < trailkeys.size(); i++)
+    for(size_t i = 0; i < trailkeys.size(); i++)
     {
         _trails[trailkeys[i]] = Trail(trailWidth, trailBufferSize);
         _trails[trailkeys[i]].initGL();
 
         _trailsColors[trailkeys[i]] = trailColors[i];
     }
+}
+
+
+void TrailManager::reInit() {
+
+    glDeleteFramebuffers(1, &_fbo);
+    glGenFramebuffers(1, &_fbo);
+    glBindFramebuffer(GL_FRAMEBUFFER, _fbo);
+    GLuint color_attachment[1] = {GL_COLOR_ATTACHMENT0};
+    glDrawBuffers(1, color_attachment);
+    glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, _renderTexture, 0);
+
+    if(glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+        std::cerr<<"error on building framebuffer."<<std::endl;
+
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+    for(auto& trail : _trails){
+        trail.second.reInitGL();
+    }
+
+//    std::for_each(_trails.begin(), _trails.end(), [](auto trail){trail->reInitGL();});
 }
 
 Camera& TrailManager::getCamera()
@@ -111,7 +133,7 @@ int TrailManager::getTrailCount() const
 
 void TrailManager::updateTrailPositions(const std::vector<int>& markerIds, std::map<int, glm::vec2> &currentMarkerPos)
 {
-    for(int i = 0; i < markerIds.size(); i++)
+    for(size_t i = 0; i < markerIds.size(); i++)
     {
         if(_trails.find(markerIds[i]) != _trails.end())
         {
@@ -122,13 +144,13 @@ void TrailManager::updateTrailPositions(const std::vector<int>& markerIds, std::
 
 void TrailManager::updateTrails()
 {
-    for(int i = 0; i < _trails.size(); i++)
+    for(size_t i = 0; i < _trails.size(); i++)
         _trails[i].update();
 }
 
 void TrailManager::synchronizeVBOTrails()
 {
-    for(int i = 0; i < _trails.size(); i++)
+    for(size_t i = 0; i < _trails.size(); i++)
         _trails[i].synchronizeVbos();
 }
 
@@ -142,7 +164,7 @@ void TrailManager::render()
         glUniformMatrix4fv( _uniform_Projection , 1, false, glm::value_ptr(_camera.getProjectionMat()));
         glUniformMatrix4fv( _uniform_View , 1, false, glm::value_ptr(_camera.getViewMat()));
 
-    for(int i = 0; i < _trails.size(); i++)
+    for(size_t i = 0; i < _trails.size(); i++)
         _trails[i].draw();
 
     if(_borders != nullptr)
@@ -168,7 +190,7 @@ void TrailManager::renderTrails()
         glUniformMatrix4fv( _uniform_Projection , 1, false, glm::value_ptr(_camera.getProjectionMat()));
         glUniformMatrix4fv( _uniform_View , 1, false, glm::value_ptr(_camera.getViewMat()));
 
-    for(int i = 0; i < _trails.size(); i++)
+    for(size_t i = 0; i < _trails.size(); i++)
         _trails[i].draw();
 }
 
@@ -211,7 +233,7 @@ void TrailManager::renderToTexture()
         glUniformMatrix4fv( _uniform_Projection , 1, false, glm::value_ptr(_camera.getProjectionMat()));
         glUniformMatrix4fv( _uniform_View , 1, false, glm::value_ptr(_camera.getViewMat()));
 
-    for(int i = 0; i < _trails.size(); i++)
+    for(size_t i = 0; i < _trails.size(); i++)
         _trails[i].draw();
 
     if(_borders != nullptr)
@@ -224,7 +246,7 @@ void TrailManager::updateCameraPos(const std::vector<cv::Vec3d>& corners, float 
 {
 
     glm::vec3 sum(0,0,0);
-    for(int i = 0; i < corners.size(); i++){
+    for(size_t i = 0; i < corners.size(); i++){
         glm::vec3 t(corners[i][0], corners[i][2], corners[i][1]);
         sum += t;
     }

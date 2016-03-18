@@ -42,8 +42,24 @@ void Trail::initGL()
         glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindVertexArray(0);
 
+}
 
 
+void Trail::reInitGL() {
+    glDeleteVertexArrays(1, &_vao);
+    glGenVertexArrays(1, &_vao);
+
+    glBindVertexArray(_vao);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, _ibo);
+    glBindBuffer(GL_ARRAY_BUFFER, _vbo);
+    glEnableVertexAttribArray(0); //position
+    glEnableVertexAttribArray(1); //color
+    glEnableVertexAttribArray(2); //UV coords
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (const GLvoid*) offsetof(Vertex, position));
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (const GLvoid*) offsetof(Vertex, color));
+    glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (const GLvoid*) offsetof(Vertex, uvCoord));
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glBindVertexArray(0);
 }
 
 //Add a point to the trail.

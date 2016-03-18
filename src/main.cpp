@@ -7,7 +7,6 @@
 #include "opencv2/opencv.hpp"
 #include "opencv2/aruco.hpp"
 #include "opencv2/aruco/charuco.hpp"
-#include "calibration.hpp"
 #include "trailManager.hpp"
 #include "ShaderProgram.hpp"
 #include "markers.hpp"
@@ -27,25 +26,29 @@ int main(int argc, char** argv) {
     std::vector<std::vector<cv::Point2f>> markersCorners;
     std::vector<int> markersIds;
 
-//    cv::Mat frame = cv::imread("image.png");
-//    getBordersScreenPositions(frame, dictionary, markersCorners, markersIds, true);
-//    cv::imshow("out", frame);
-//    char key = (char) cv::waitKey(0);
+    cv::Mat image;
 
-    while(inputVideo.grab()){
-        cv::Mat image, imageCopy;
-        inputVideo.retrieve(image);
-        image.copyTo(imageCopy);
+    image = cv::imread("image.png");
+    getBordersScreenPositions(image, dictionary, markersCorners, markersIds, true);
 
-        getBordersScreenPositions(imageCopy, dictionary, markersCorners, markersIds, true);
 
-        cv::imshow("out", imageCopy);
+    if(image.empty()){
+        while(inputVideo.grab()){
+            cv::Mat imageCopy;
+            inputVideo.retrieve(image);
+            image.copyTo(imageCopy);
 
-        char key = (char) cv::waitKey(1);
-        if (key == 27 && markersIds.size() == 4){
-            break;
+            getBordersScreenPositions(imageCopy, dictionary, markersCorners, markersIds, true);
+
+            cv::imshow("out", imageCopy);
+
+            char key = (char) cv::waitKey(1);
+            if (key == 27 && markersIds.size() == 4){
+                break;
+            }
         }
     }
+
 
     float camWidth = inputVideo.get(CV_CAP_PROP_FRAME_WIDTH);
     float camHeight = inputVideo.get(CV_CAP_PROP_FRAME_HEIGHT);
@@ -67,19 +70,9 @@ int main(int argc, char** argv) {
         bordersUvs.push_back(cv::Point2f(bordersPos.x / camWidth, bordersPos.y/camHeight));
     }
 
-    for(int i = 0; i < markersIds.size(); ++i){
+    for(size_t i = 0; i < markersIds.size(); ++i){
         bordersPositionsOrdered[markersIds[i]] = bordersPositions[i];
         bordersUvsOrdered[markersIds[i]] = bordersUvs[i];
-    }
-
-    DLOG(INFO) << "UNORDERED : ";
-    for(int i = 0; i < markersIds.size(); ++i){
-        DLOG(INFO) << "ID:";
-        DLOG(INFO) << markersIds[i];
-        DLOG(INFO) << "BORDER POS:";
-        DLOG(INFO) << bordersPositions[i].x << " " << bordersPositions[i].y;
-        DLOG(INFO) << "BORDER UV:";
-        DLOG(INFO) << bordersUvs[i].x << " " << bordersUvs[i].y;
     }
 
     bordersPositions = bordersPositionsOrdered;
@@ -87,7 +80,7 @@ int main(int argc, char** argv) {
 
     DLOG(INFO) << "-------------------------------------------------";
     DLOG(INFO) << "ORDERED : ";
-    for(int i = 0; i < markersIds.size(); ++i){
+    for(size_t i = 0; i < markersIds.size(); ++i){
         DLOG(INFO) << "ID:";
         DLOG(INFO) << i;
         DLOG(INFO) << "BORDER POS:";
@@ -116,51 +109,45 @@ int main(int argc, char** argv) {
     glm::mat3 glScreenNormToUV;
     cv::Mat cvScreenNormToUV;
 
-
-    bool inverse = true;
-
     cvScreenToViewport = cv::findHomography(bordersPositions, bordersTargetPositions);
     glScreenToViewport = convertCVMatrix3x3(cvScreenToViewport);
 
     cvScreenNormToUV = cv::findHomography(bordersUvs, bordersTargetUvs);
     glScreenNormToUV = convertCVMatrix3x3(cvScreenNormToUV);
 
-    DLOG(INFO) << "HOMOGRAPHY_UV";
-    for(auto& point : bordersUvs){
-        glm::vec3 toto(glScreenNormToUV * glm::vec3(point.x, point.y, 1));
-        toto/=toto.z;
-        DLOG(INFO) << point << " TO " << glm::to_string(toto);
-    }
-
-    DLOG(INFO) << "HOMOGRAPHY_UV_INV";
-    for(auto& point : bordersTargetUvs){
-        glm::vec3 toto(glm::inverse(glScreenNormToUV) * glm::vec3(point.x, point.y, 1));
-        toto/=toto.z;
-        DLOG(INFO) << point << " TO " << glm::to_string(toto);
-    }
-
-    DLOG(INFO) << "HOMOGRAPHY_SCREEN";
-    for(auto& point : bordersPositions){
-        glm::vec3 toto(glScreenToViewport * glm::vec3(point.x, point.y, 1));
-        toto/=toto.z;
-        DLOG(INFO) << point << " TO " << glm::to_string(toto);
-    }
-
-    DLOG(INFO) << "HOMOGRAPHY_SCREEN_INV";
-    for(auto& point : bordersTargetPositions){
-        glm::vec3 toto(glm::inverse(glScreenToViewport) * glm::vec3(point.x, point.y, 1));
-        toto/=toto.z;
-        DLOG(INFO) << point << " TO " << glm::to_string(toto);
-    }
-
-//    return 0;
+//    DLOG(INFO) << "HOMOGRAPHY_UV";
+//    for(auto& point : bordersUvs){
+//        glm::vec3 toto(glScreenNormToUV * glm::vec3(point.x, point.y, 1));
+//        toto/=toto.z;
+//        DLOG(INFO) << point << " TO " << glm::to_string(toto);
+//    }
+//
+//    DLOG(INFO) << "HOMOGRAPHY_UV_INV";
+//    for(auto& point : bordersTargetUvs){
+//        glm::vec3 toto(glm::inverse(glScreenNormToUV) * glm::vec3(point.x, point.y, 1));
+//        toto/=toto.z;
+//        DLOG(INFO) << point << " TO " << glm::to_string(toto);
+//    }
+//
+//    DLOG(INFO) << "HOMOGRAPHY_SCREEN";
+//    for(auto& point : bordersPositions){
+//        glm::vec3 toto(glScreenToViewport * glm::vec3(point.x, point.y, 1));
+//        toto/=toto.z;
+//        DLOG(INFO) << point << " TO " << glm::to_string(toto);
+//    }
+//
+//    DLOG(INFO) << "HOMOGRAPHY_SCREEN_INV";
+//    for(auto& point : bordersTargetPositions){
+//        glm::vec3 toto(glm::inverse(glScreenToViewport) * glm::vec3(point.x, point.y, 1));
+//        toto/=toto.z;
+//        DLOG(INFO) << point << " TO " << glm::to_string(toto);
+//    }
 
     //set window size :
-    int width = 640, height= 480;
+    int width = 1280, height= 720;
     //set corners position :
     std::vector<cv::Vec3d> corners = {cv::Vec3d(1,1,0), cv::Vec3d(-1,1,0), cv::Vec3d(-1,-1,0), cv::Vec3d(1,-1,0)};//{cv::Vec3d(width,height,0), cv::Vec3d(0,height,0), cv::Vec3d(0,0,0), cv::Vec3d(width,0,0)};
-    bool drawBackground = true;
-    bool drawBorders = true;
+
 
     // Initialise GLFW
     if( !glfwInit() )
@@ -217,8 +204,14 @@ int main(int argc, char** argv) {
     }
 
     // ---------------- Create shader that will draw quad
+
+    // Simple shader that apply homography on webcam texture
     Graphics::ShaderProgram flatifyProgram("../shaders/blit.vert", "", "../shaders/flatify.frag");
+
+    // Simple shader that stretch images for mapping
     Graphics::ShaderProgram stretchifyProgram(flatifyProgram.vShader(), "../shaders/stretchify.frag");
+
+    //simply add borders to make mapping easier
     Graphics::ShaderProgram borderifyProgram(flatifyProgram.vShader(), "../shaders/borderify.frag");
 
     flatifyProgram.updateUniform("Texture", 0);
@@ -322,7 +315,6 @@ int main(int argc, char** argv) {
 
     cv::Mat captureImage;
 
-
     // Create Texture -------------------------------------------------------------------------------------------------------------------------------
 
     int capWidth = inputVideo.get(CV_CAP_PROP_FRAME_WIDTH);
@@ -344,18 +336,20 @@ int main(int argc, char** argv) {
     float fps = 0.f;
 
     bool fullscreen = false;
-    bool keypressed = false;
+    bool keypressedFullscreen = false;
 
+    bool drawBackground = true;
+    bool drawBorders = true;
     bool drawImgui = true;
+    bool keypressedDrawImgui = false;
 
     // Create TrailManager --------------------------------------------------------------------------------------------------------------------
 
-    int finalImgWidth = width; // ???
-    int finalImgHeight = height; // ???
+    int finalImgWidth = 1920;
+    int finalImgHeight = 1080;
     std::vector<int> trailsMarkerIds = {0,1};
     TrailManager trailManager(finalImgWidth, finalImgHeight, trailsMarkerIds, {glm::vec3(1,0,0), glm::vec3(0,1,0)}, 128, 0.1);
     trailManager.updateCameraPos(corners, 10);
-    //cv::Mat trailImg(finalImgHeight, finalImgWidth, CV_8UC3);
     Timer trailTimer;
 
     // Set up Aruco -------------------------------------------------------------------------------------------------------------
@@ -384,10 +378,6 @@ int main(int argc, char** argv) {
         // get camera image ---------------------------------------------------------------------------
         inputVideo >> captureImage;
 
-//        cv::flip(captureImage, captureImage, 0);
-
-        //--------------------------------------------------------------------------------------------------------
-
         //Get marker positions ------------------------------------------------------------------------------------
         std::vector<int> markerIds;
         std::vector< std::vector<cv::Point2f> > markerCorners;
@@ -395,11 +385,11 @@ int main(int argc, char** argv) {
 
         //markerCenters will contains the center of each marker.
         std::map<int, glm::vec2> markerCenters;
-        for(int i = 0; i < markerCorners.size(); i++)
+        for(size_t i = 0; i < markerCorners.size(); i++)
         {
             //get center of each corner :
             glm::vec2 sum(0,0);
-            for(int j = 0; j < markerCorners[i].size(); j++)
+            for(size_t j = 0; j < markerCorners[i].size(); j++)
             {
                 sum += glm::vec2(markerCorners[i][j].x, markerCorners[i][j].y);
             }
@@ -417,10 +407,8 @@ int main(int argc, char** argv) {
             cv::aruco::drawDetectedMarkers(captureImage, markerCorners, markerIds);
         }
 
-
         glBindTexture(GL_TEXTURE_2D, cvTexture);
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, capWidth, capHeight, 0, GL_BGR, GL_UNSIGNED_BYTE, captureImage.data);
-        // ------------------------------------------------------------------------------------------------------------
 
         //update trails ------------------------------------------------------------------------------------------------------
 
@@ -438,27 +426,22 @@ int main(int argc, char** argv) {
         trailManager.updateTrails();
         trailManager.synchronizeVBOTrails();
 
-        //---------------------------------------------------------------------------------------------
-
-//        glEnable(GL_DEPTH_TEST);
-//        glEnable(GL_BLEND);
-//        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-//        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
         // Find Draw -------------------------------------------------------------------------------------------------------------------------------
-
+        glClear(GL_COLOR_BUFFER_BIT);
 
         trailManager.bind();
-//            glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-            glViewport(0, 0, trailManager.getTexWidth(), trailManager.getTexHeight());
+        glClear(GL_COLOR_BUFFER_BIT);
+        glViewport(0, 0, trailManager.getTexWidth(), trailManager.getTexHeight());
 
+        if(drawBackground){
             flatifyProgram.useProgram();
             glBindVertexArray(flatifyVAO);
             glBindTexture(GL_TEXTURE_2D, cvTexture);
             glDrawElements(GL_TRIANGLES, quad_triangleCount * 3, GL_UNSIGNED_INT, (void*)0);
+        }
 
-            trailManager.renderTrails();
+        trailManager.renderTrails();
 
         trailManager.unBind();
 
@@ -486,12 +469,12 @@ int main(int argc, char** argv) {
         glBindTexture(GL_TEXTURE_2D, trailManager.getRenderTextureGLId());
         glDrawElements(GL_TRIANGLES, quad_triangleCount * 3, GL_UNSIGNED_INT, (void*)0);
 
-        glLineWidth(10);
-        borderifyProgram.useProgram();
-
-
-        glBindVertexArray(borderifyVAO);
-        glDrawElements(GL_LINE_LOOP, 4, GL_UNSIGNED_INT, (void*)0);
+        if(drawBorders){
+            glLineWidth(10);
+            borderifyProgram.useProgram();
+            glBindVertexArray(borderifyVAO);
+            glDrawElements(GL_LINE_LOOP, 4, GL_UNSIGNED_INT, (void*)0);
+        }
 
 
         // Draw UI
@@ -502,64 +485,134 @@ int main(int argc, char** argv) {
         imguiBeginFrame(mousex, mousey, mbut, mscroll);
         char lineBuffer[512];
 
-        float xwidth = 300;
-        float ywidth = 500;
+        float xwidth = drawImgui ? 300 : 0;
+        float ywidth = drawImgui ? 500 : 0;
 
-        imguiBeginScrollArea("car-track", width - xwidth - 10, height - ywidth - 10, xwidth, ywidth, &logScroll);
-        sprintf(lineBuffer, "FPS %f", fps);
-        if(imguiCheck("draw background", drawBackground))
-            drawBackground = !drawBackground;
-        if(imguiCheck("draw borders", drawBorders))
-            drawBorders = !drawBorders;
+        float padding = drawImgui ? 10 : -10;
 
-        imguiLabel(lineBuffer);
+        imguiBeginScrollArea("car-track", width - xwidth - padding, height - ywidth - padding, xwidth, ywidth, &logScroll);
 
-        for(auto& vec : quadVertices){
-            imguiSeparatorLine();
-            imguiSlider("x", &vec.x, -1, 1, 0.01);
-            imguiSlider("y", &vec.y, -1, 1, 0.01);
+        if(drawImgui){
+            sprintf(lineBuffer, "FPS %f", fps);
+            imguiLabel(lineBuffer);
+
+            if(imguiCheck("draw background", drawBackground))
+                drawBackground = !drawBackground;
+            if(imguiCheck("draw borders", drawBorders))
+                drawBorders = !drawBorders;
+
+            for(auto& vec : quadVertices){
+                imguiSeparatorLine();
+                imguiSlider("x", &vec.x, -1, 1, 0.01);
+                imguiSlider("y", &vec.y, -1, 1, 0.01);
+            }
+
+            imguiEndScrollArea();
+            imguiEndFrame();
         }
 
-        imguiEndScrollArea();
-
-        imguiEndFrame();
         imguiRenderGLDraw(width, height);
 
         glDisable(GL_BLEND);
 
-
-
-
-
         glfwSwapBuffers(window);
+
+        if(glfwGetKey(window, GLFW_KEY_F) == GLFW_PRESS && !keypressedFullscreen){
+            fullscreen = !fullscreen;
+            keypressedFullscreen = true;
+            DLOG(INFO) << "SWITCH TO " << (fullscreen ? "FULLSCREEN" : "WINDOWED");
+
+            int count;
+            GLFWmonitor** monitors = glfwGetMonitors(&count);
+
+            GLFWwindow * tmpWindow = glfwCreateWindow(width, height, "car-track", fullscreen ? monitors[count-1] : NULL, window);
+            glfwMakeContextCurrent(tmpWindow);
+            glfwDestroyWindow(window);
+            window = tmpWindow;
+            GLenum err = glewInit();
+            glfwSwapBuffers(window);
+
+            glDeleteVertexArrays(1, &flatifyVAO);
+            glGenVertexArrays(1, &flatifyVAO);
+
+            glBindVertexArray(flatifyVAO);
+            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, flatifyVBOIndexes);
+
+            glBindBuffer(GL_ARRAY_BUFFER, flatifyVBOVertices);
+            glEnableVertexAttribArray(0);
+            glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(GL_FLOAT)*2, (void*)0);
+
+            glBindBuffer(GL_ARRAY_BUFFER, flatifyVBOTexcoord);
+            glEnableVertexAttribArray(1);
+            glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(GL_FLOAT)*2, (void*)0);
+
+            // ---------------- Create vao to stretchify original image;
+
+            glDeleteVertexArrays(1, &stretchifyVAO);
+            glGenVertexArrays(1, &stretchifyVAO);
+
+            glBindVertexArray(stretchifyVAO);
+            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, flatifyVBOIndexes);
+
+            glBindBuffer(GL_ARRAY_BUFFER, stretchifyVBOVertices);
+            glEnableVertexAttribArray(0);
+            glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(GL_FLOAT)*2, (void*)0);
+
+            glBindBuffer(GL_ARRAY_BUFFER, flatifyVBOTexcoord);
+            glEnableVertexAttribArray(1);
+            glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(GL_FLOAT)*2, (void*)0);
+
+            // ---------------- Create vao to borderify original image;
+
+            glDeleteVertexArrays(1, &borderifyVAO);
+            glGenVertexArrays(1, &borderifyVAO);
+
+            glBindVertexArray(borderifyVAO);
+            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, borderifyVBOIndexes);
+
+            glBindBuffer(GL_ARRAY_BUFFER, stretchifyVBOVertices);
+            glEnableVertexAttribArray(0);
+            glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(GL_FLOAT)*2, (void*)0);
+
+            glBindBuffer(GL_ARRAY_BUFFER, flatifyVBOTexcoord);
+            glEnableVertexAttribArray(1);
+            glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(GL_FLOAT)*2, (void*)0);
+
+            glBindVertexArray(0);
+            glBindBuffer(GL_ARRAY_BUFFER, 0);
+            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+
+            trailManager.reInit();
+
+            if (!imguiRenderGLInit(DroidSans_ttf, DroidSans_ttf_len))
+            {
+                fprintf(stderr, "Could not init GUI renderer.\n");
+                exit(EXIT_FAILURE);
+            }
+
+            glfwSwapInterval(1);
+
+            glClear(GL_COLOR_BUFFER_BIT);
+        }
+
         glfwPollEvents();
 
         double newTime = glfwGetTime();
         double frameDeltaTime = newTime - t;
         fps = 1.f/ frameDeltaTime;
 
-
-        if(glfwGetKey(window, GLFW_KEY_F) == GLFW_PRESS && !keypressed){
-            fullscreen = !fullscreen;
-            keypressed = true;
-            DLOG(INFO) << "SWITCH TO " << (fullscreen ? "FULLSCREEN" : "WINDOWED");
-
-            GLFWwindow * tmpWindow = glfwCreateWindow(width, height, "salut", fullscreen ? glfwGetPrimaryMonitor() : NULL, window);
-            glfwDestroyWindow(window);
-            window = tmpWindow;
-
-            glfwMakeContextCurrent(window);
-            glfwSwapInterval(1);
-            glClear(GL_COLOR_BUFFER_BIT);
+        if(glfwGetKey(window, GLFW_KEY_F) == GLFW_RELEASE && keypressedFullscreen){
+            keypressedFullscreen = false;
         }
 
-        if(glfwGetKey(window, GLFW_KEY_F) == GLFW_RELEASE && keypressed){
-            keypressed = false;
-        }
-
-        if(glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS){
+        if(glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS && !keypressedDrawImgui){
             drawImgui = !drawImgui;
+            keypressedDrawImgui = true;
             DLOG(INFO) << "DRAW IMGUI " << drawImgui;
+        }
+
+        if(glfwGetKey(window, GLFW_KEY_D) == GLFW_RELEASE && keypressedDrawImgui){
+            keypressedDrawImgui = false;
         }
 
     } while(glfwGetKey( window, GLFW_KEY_ESCAPE ) != GLFW_PRESS && !glfwWindowShouldClose(window));
