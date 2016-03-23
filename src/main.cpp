@@ -28,8 +28,8 @@ int main(int argc, char** argv) {
 
     cv::Mat image;
 
-    image = cv::imread("image.png");
-    getBordersScreenPositions(image, dictionary, markersCorners, markersIds, true);
+//    image = cv::imread("image.png");
+//    getBordersScreenPositions(image, dictionary, markersCorners, markersIds, true);
 
 
     if(image.empty()){
@@ -213,6 +213,7 @@ int main(int argc, char** argv) {
 
     //simply add borders to make mapping easier
     Graphics::ShaderProgram borderifyProgram(flatifyProgram.vShader(), "../shaders/borderify.frag");
+    Graphics::ShaderProgram glitchProgram(flatifyProgram.vShader(), "../shaders/glitch.frag");
 
     flatifyProgram.updateUniform("Texture", 0);
     flatifyProgram.updateUniform("Homography", glScreenNormToUV);
@@ -413,9 +414,18 @@ int main(int argc, char** argv) {
         //update trails ------------------------------------------------------------------------------------------------------
 
         //add point to trail base on the first marker position :
+        bool collisionOccured = false;
         if(trailTimer.elapsedTime() > 0.003f )
         {
             trailManager.updateTrailPositions(markerIds, markerCenters);
+            glBindVertexArray(flatifyVAO);
+            collisionOccured = trailManager.updateScoresCollision();
+//            for(auto& t: trailManager.trails()){
+//                DLOG(INFO) << t.first;
+//                DLOG(INFO) << t.second.score;
+//                DLOG(INFO) << "----------";
+//            }
+            glBindVertexArray(0);
             trailTimer.restart();
         }
 
@@ -441,6 +451,7 @@ int main(int argc, char** argv) {
             glDrawElements(GL_TRIANGLES, quad_triangleCount * 3, GL_UNSIGNED_INT, (void*)0);
         }
 
+
         trailManager.renderTrails();
 
         trailManager.unBind();
@@ -453,7 +464,6 @@ int main(int argc, char** argv) {
         }
 
         cv::Mat cvStretchHomography = cv::findHomography(original, stretchedPoints);
-
         glm::mat3 glStretchHomography = convertCVMatrix3x3(cvStretchHomography);
 
         stretchifyProgram.updateUniform("Homography", glStretchHomography);
@@ -468,6 +478,18 @@ int main(int argc, char** argv) {
         glBindVertexArray(stretchifyVAO);
         glBindTexture(GL_TEXTURE_2D, trailManager.getRenderTextureGLId());
         glDrawElements(GL_TRIANGLES, quad_triangleCount * 3, GL_UNSIGNED_INT, (void*)0);
+
+
+        if(collisionOccured){
+            glitchProgram.useProgram();
+            glBindTexture(GL_TEXTURE_2D, trailManager.getRenderTextureGLId());
+            glitchProgram.updateUniform("Texture", 0);
+            glitchProgram.updateUniform("Random", glm::linearRand(0.f, 1.f));
+            glBindVertexArray(flatifyVAO);
+            glDrawElements(GL_TRIANGLES, quad_triangleCount * 3, GL_UNSIGNED_INT, (void*)0);
+        }
+
+
 
         if(drawBorders){
             glLineWidth(10);

@@ -1,6 +1,7 @@
 #include <time.h>
 #include <unistd.h>
 #include "trailManager.hpp"
+#include <glm/gtc/random.hpp>
 
 static const std::string  fragmentShader = "#version 410 core\n \
         in vec3 vFragColor;\n \
@@ -487,4 +488,29 @@ int testDrawFollowingMouse()
             usleep(((1.f/30.f) - t)*1000000);
         }
     }
+}
+
+std::map<int, Trail> &TrailManager::trails() {
+    return _trails;
+}
+
+bool TrailManager::updateScoresCollision() {
+    bool collide = false;
+    for(auto& currentTrail: _trails){
+        for(auto& otherTrail: _trails){
+            if(otherTrail.first == currentTrail.first)
+                continue;
+
+            if(currentTrail.second.isCollide(otherTrail.second, 0.1)){
+                collide = true;
+
+                for(auto& scoreTrail: _trails) {
+                    if(scoreTrail.first == currentTrail.first)
+                        continue;
+                    ++scoreTrail.second.score();
+                }
+            }
+        }
+    }
+    return collide;
 }

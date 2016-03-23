@@ -20,6 +20,8 @@
 #include "borders.hpp"
 
 
+#include "ShaderProgram.hpp"
+
 struct InputInfo{
     bool leftButtonDown;
     bool rightButtonDown;
@@ -52,6 +54,7 @@ public:
 
     Camera& getCamera();
     Trail& getTrail(int key);
+    std::map<int, Trail>& trails();
     int getTrailCount() const;
     //void updateFromOpenCV(const cv::Mat& camToWorld, const std::vector<int>& markerId, const std::vector<cv::Vec<double, 3>>& currentMarkerPos);
     void updateTrailPositions(const std::vector<int>& markerIds, std::map<int, glm::vec2> &currentMarkerPos);
@@ -69,6 +72,8 @@ public:
     void renderBorders();
     int getTexWidth() const;
     int getTexHeight() const;
+
+    bool updateScoresCollision();
 };
 
 void openglDrawCalls(void* userData);

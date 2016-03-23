@@ -31,6 +31,7 @@ private:
     float _trailWidth;
     int _frontIndex;
     int _backIndex;
+    int _score;
 
 public:
     Trail(float trailWidth = 1, int bufferSize = 16);
@@ -49,6 +50,9 @@ public:
     void draw();
     void clearGL();
     void update();
+    int& score();
+    void setScore(int score);
+    bool isCollide(const Trail &other, float radiusCollider) const;
 
     int getIndexCount();
 };

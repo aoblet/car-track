@@ -1,6 +1,6 @@
 #include "trail.hpp"
 
-Trail::Trail(float trailWidth, int bufferSize) : _trailBuffer(bufferSize) ,_vao(0), _vbo(0), _ibo(0), _trailWidth(trailWidth), _frontIndex(0), _backIndex(0)
+Trail::Trail(float trailWidth, int bufferSize) : _trailBuffer(bufferSize) ,_vao(0), _vbo(0), _ibo(0), _trailWidth(trailWidth), _frontIndex(0), _backIndex(0), _score(0)
 {
 
 }
@@ -244,3 +244,22 @@ int Trail::getIndexCount()
     return _trailIndex.size();
 }
 
+bool Trail::isCollide(const Trail &other, float radiusCollider) const {
+    if(_trailPoints.empty())
+        return false;
+
+    glm::vec3 lastPoint = _trailPoints[_trailPoints.size()-1];
+    for(auto& p: other._trailPoints){
+        if(glm::distance2(glm::vec2(p.x, p.y), glm::vec2(lastPoint.x, lastPoint.y)) < radiusCollider)
+            return true;
+    }
+    return false;
+}
+
+int &Trail::score() {
+    return _score;
+}
+
+void Trail::setScore(int score) {
+    _score = score;
+}
