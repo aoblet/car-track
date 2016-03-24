@@ -11,6 +11,7 @@
 #include "ShaderProgram.hpp"
 #include "markers.hpp"
 #include "timer.hpp"
+#include <SDL2/SDL_mixer.h>
 
 // Font buffers
 extern const unsigned char DroidSans_ttf[];
@@ -20,7 +21,21 @@ int main(int argc, char** argv) {
 
     cv::VideoCapture inputVideo(-1);
     if(!inputVideo.open(-1))
-        throw;
+        throw std::runtime_error("No camera found");
+
+    if(Mix_OpenAudio(44100, MIX_DEFAULT_FORMAT, MIX_DEFAULT_CHANNELS, 1024) == -1){
+        throw std::runtime_error("Cannot init SDL_Mixer");
+    }
+
+    const std::string collisionSoundName = "../assets/collision.wav";
+    const std::string curveFeverSoundName = "../assets/curveFever.mp3";
+    const std::string winSoundName = "../assets/win.mp3";
+
+    Mix_Chunk* collisionSound = Mix_LoadWAV(collisionSoundName.c_str());
+    Mix_Music* winMusic = Mix_LoadMUS(winSoundName.c_str());
+    Mix_Music* curveFeverSound = Mix_LoadMUS(curveFeverSoundName.c_str());
+
+    Mix_PlayMusic(curveFeverSound, -1);
 
     cv::Ptr<cv::aruco::Dictionary> dictionary = cv::aruco::getPredefinedDictionary(cv::aruco::DICT_5X5_50);
     std::vector<std::vector<cv::Point2f>> markersCorners;
@@ -28,8 +43,8 @@ int main(int argc, char** argv) {
 
     cv::Mat image;
 
-    image = cv::imread("image.png");
-    getBordersScreenPositions(image, dictionary, markersCorners, markersIds, true);
+//    image = cv::imread("../assets/image.png");
+//    getBordersScreenPositions(image, dictionary, markersCorners, markersIds, true);
 
 
     if(image.empty()){
@@ -354,6 +369,9 @@ int main(int argc, char** argv) {
     bool drawImgui = true;
     bool keypressedDrawImgui = false;
 
+    bool player1Win = false;
+    bool player2Win = false;
+
     // Create TrailManager --------------------------------------------------------------------------------------------------------------------
 
     int finalImgWidth = 1920;
@@ -430,11 +448,6 @@ int main(int argc, char** argv) {
             trailManager.updateTrailPositions(markerIds, markerCenters);
             glBindVertexArray(flatifyVAO);
             collisionOccured = trailManager.updateScoresCollision();
-//            for(auto& t: trailManager.trails()){
-//                DLOG(INFO) << t.first;
-//                DLOG(INFO) << t.second.score;
-//                DLOG(INFO) << "----------";
-//            }
             glBindVertexArray(0);
             trailTimer.restart();
         }
@@ -447,6 +460,7 @@ int main(int argc, char** argv) {
         trailManager.synchronizeVBOTrails();
 
         // Find Draw -------------------------------------------------------------------------------------------------------------------------------
+
         glClear(GL_COLOR_BUFFER_BIT);
 
         trailManager.bind();
@@ -463,7 +477,9 @@ int main(int argc, char** argv) {
 
         trailManager.renderTrails();
 
-        if(glfwGetKey(window, GLFW_KEY_G) == GLFW_PRESS){
+//        collisionOccured = glfwGetKey(window, GLFW_KEY_C) == GLFW_PRESS;
+
+        if(collisionOccured){
             glitchProgram.useProgram();
             glitchProgram.updateUniform("Texture", 0);
             glitchProgram.updateUniform("GlitchTexture", 1);
@@ -477,6 +493,9 @@ int main(int argc, char** argv) {
 
             glBindVertexArray(flatifyVAO);
             glDrawElements(GL_TRIANGLES, quad_triangleCount * 3, GL_UNSIGNED_INT, (void*)0);
+
+            if(Mix_Playing(-1) == 0)
+                Mix_PlayChannel(-1, collisionSound, 0);
         }
 
         trailManager.unBind();
@@ -506,11 +525,19 @@ int main(int argc, char** argv) {
 
         if(drawBorders){
             glLineWidth(10);
+
             borderifyProgram.useProgram();
+
+            if(collisionOccured){
+                borderifyProgram.updateUniform("LineColor", glm::sphericalRand(1.f));
+            }
+            else{
+                borderifyProgram.updateUniform("LineColor", glm::vec3(1,1,1));
+            }
+
             glBindVertexArray(borderifyVAO);
             glDrawElements(GL_LINE_LOOP, 4, GL_UNSIGNED_INT, (void*)0);
         }
-
 
         // Draw UI
         glEnable(GL_BLEND);
@@ -650,10 +677,28 @@ int main(int argc, char** argv) {
             keypressedDrawImgui = false;
         }
 
-    } while(glfwGetKey( window, GLFW_KEY_ESCAPE ) != GLFW_PRESS && !glfwWindowShouldClose(window));
+    } while((glfwGetKey( window, GLFW_KEY_ESCAPE ) != GLFW_PRESS && !glfwWindowShouldClose(window)) && !player1Win && !player2Win);
+
+    Mix_PlayMusic(winMusic, 1);
+
+    do{
+        glfwSwapBuffers(window);
+
+        glfwSwapInterval(1);
+
+        glClear(GL_COLOR_BUFFER_BIT);
+
+        glfwPollEvents();
+
+    } while(glfwGetKey( window, GLFW_KEY_Q ) != GLFW_PRESS && !glfwWindowShouldClose(window));
+
+    glfwDestroyWindow(window);
 
     DLOG(INFO) << "END PROGRAM";
 
+    Mix_FreeChunk(collisionSound);
+    Mix_FreeMusic(curveFeverSound);
+    Mix_CloseAudio();
     glfwTerminate();
 
     return 0;

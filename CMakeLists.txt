@@ -8,7 +8,8 @@ find_package(OpenGL REQUIRED)
 find_package(OpenCV REQUIRED)
 find_package(GLOG REQUIRED)
 find_package(X11 REQUIRED)
-
+find_package(SDL_mixer REQUIRED)
+find_package(SDL REQUIRED)
 find_package(PkgConfig REQUIRED)
 pkg_search_module(GLFW REQUIRED glfw3)
 
@@ -19,6 +20,8 @@ include_directories(
     ${OpenCV_INCLUDE_DIRS}
     ${GLOG_INCLUDE_DIRS}
     ${GLFW_INCLUDE_DIRS}
+    ${SDL_MIXER_INCLUDE_DIRS}
+    ${SDL_INCLUDE_DIRS}
 )
 
 include_directories(include)
@@ -37,7 +40,11 @@ target_link_libraries(
     ${X11_LIBRARIES}
     ${GLFW_STATIC_LIBRARIES}
     IMGUI_LIBRARY
+    ${SDL_MIXER_LIBRARIES}
+    ${SDL_LIBRARY}
 )
+
+message(WARNING ${SDL_MIXER_LIBRARIES})
 
 FOREACH(item ${GLFW_STATIC_LIBRARIES})
     MESSAGE(STATUS "  using lib: " ${item})
