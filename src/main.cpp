@@ -229,6 +229,7 @@ int main(int argc, char** argv) {
     //simply add borders to make mapping easier
     Graphics::ShaderProgram borderifyProgram(flatifyProgram.vShader(), "../shaders/borderify.frag");
     Graphics::ShaderProgram glitchProgram(flatifyProgram.vShader(), "../shaders/glitch.frag");
+    Graphics::ShaderProgram textureProgram(flatifyProgram.vShader(), "../shaders/texture.frag");
 
     flatifyProgram.updateUniform("Texture", 0);
     flatifyProgram.updateUniform("Homography", glScreenNormToUV);
@@ -345,7 +346,7 @@ int main(int argc, char** argv) {
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
-    cv::Mat glitchTexture = cv::imread("glitch.jpg");
+    cv::Mat glitchTexture = cv::imread("../assets/glitch.jpg");
     GLuint glitchTextureId;
     glGenTextures(1, &glitchTextureId);
     glBindTexture(GL_TEXTURE_2D, glitchTextureId);
@@ -354,6 +355,8 @@ int main(int argc, char** argv) {
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+
 
     // GUI vars -------------------------------------------------------------------------------------------------------------------------------
 
@@ -681,12 +684,69 @@ int main(int argc, char** argv) {
 
     Mix_PlayMusic(winMusic, 1);
 
+    std::string winPath = "../assets/";
+    winPath += (player1Win ? "win1.jpg" : "win2.jpg");
+    DLOG(INFO) << "winPath" << winPath;
+
+    cv::Mat winTexture = cv::imread(winPath);
+    cv::flip(winTexture, winTexture, -1);
+
+    GLuint winTextureId;
+    glGenTextures(1, &winTextureId);
+    glBindTexture(GL_TEXTURE_2D, winTextureId);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, winTexture.cols, winTexture.rows, 0, GL_RGB, GL_UNSIGNED_BYTE, winTexture.data);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
     do{
+
+        glClear(GL_COLOR_BUFFER_BIT);
+
+        trailManager.bind();
+
+        glClear(GL_COLOR_BUFFER_BIT);
+        glViewport(0, 0, trailManager.getTexWidth(), trailManager.getTexHeight());
+
+        textureProgram.useProgram();
+        textureProgram.updateUniform("Texture", 0);
+        glBindVertexArray(flatifyVAO);
+        glBindTexture(GL_TEXTURE_2D, winTextureId);
+        glDrawElements(GL_TRIANGLES, quad_triangleCount * 3, GL_UNSIGNED_INT, (void*)0);
+
+        trailManager.unBind();
+
+        glViewport(0, 0, width, height);
+
+        stretchifyProgram.useProgram();
+
+        glBindBuffer(GL_ARRAY_BUFFER, stretchifyVBOVertices);
+        glBufferData(GL_ARRAY_BUFFER, quadVertices.size() * sizeof(glm::vec2), quadVertices.data(), GL_DYNAMIC_DRAW);
+
+        glBindVertexArray(stretchifyVAO);
+        glBindTexture(GL_TEXTURE_2D, trailManager.getRenderTextureGLId());
+        glDrawElements(GL_TRIANGLES, quad_triangleCount * 3, GL_UNSIGNED_INT, (void*)0);
+
+//        if(drawBorders){
+//            glLineWidth(10);
+//
+//            borderifyProgram.useProgram();
+//
+//            if(collisionOccured){
+//                borderifyProgram.updateUniform("LineColor", glm::sphericalRand(1.f));
+//            }
+//            else{
+//                borderifyProgram.updateUniform("LineColor", glm::vec3(1,1,1));
+//            }
+//
+//            glBindVertexArray(borderifyVAO);
+//            glDrawElements(GL_LINE_LOOP, 4, GL_UNSIGNED_INT, (void*)0);
+//        }
+
         glfwSwapBuffers(window);
 
         glfwSwapInterval(1);
-
-        glClear(GL_COLOR_BUFFER_BIT);
 
         glfwPollEvents();
 
