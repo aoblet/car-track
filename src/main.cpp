@@ -28,8 +28,8 @@ int main(int argc, char** argv) {
 
     cv::Mat image;
 
-//    image = cv::imread("image.png");
-//    getBordersScreenPositions(image, dictionary, markersCorners, markersIds, true);
+    image = cv::imread("image.png");
+    getBordersScreenPositions(image, dictionary, markersCorners, markersIds, true);
 
 
     if(image.empty()){
@@ -316,7 +316,7 @@ int main(int argc, char** argv) {
 
     cv::Mat captureImage;
 
-    // Create Texture -------------------------------------------------------------------------------------------------------------------------------
+    // Create Textures -------------------------------------------------------------------------------------------------------------------------------
 
     int capWidth = inputVideo.get(CV_CAP_PROP_FRAME_WIDTH);
     int capHeight = inputVideo.get(CV_CAP_PROP_FRAME_HEIGHT);
@@ -325,6 +325,16 @@ int main(int argc, char** argv) {
     glGenTextures(1, &cvTexture);
     glBindTexture(GL_TEXTURE_2D, cvTexture);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, capWidth, capHeight, 0, GL_RGB, GL_UNSIGNED_BYTE, 0);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+    cv::Mat glitchTexture = cv::imread("glitch.jpg");
+    GLuint glitchTextureId;
+    glGenTextures(1, &glitchTextureId);
+    glBindTexture(GL_TEXTURE_2D, glitchTextureId);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, glitchTexture.cols, glitchTexture.rows, 0, GL_RGB, GL_UNSIGNED_BYTE, glitchTexture.data);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
@@ -451,8 +461,23 @@ int main(int argc, char** argv) {
             glDrawElements(GL_TRIANGLES, quad_triangleCount * 3, GL_UNSIGNED_INT, (void*)0);
         }
 
-
         trailManager.renderTrails();
+
+        if(glfwGetKey(window, GLFW_KEY_G) == GLFW_PRESS){
+            glitchProgram.useProgram();
+            glitchProgram.updateUniform("Texture", 0);
+            glitchProgram.updateUniform("GlitchTexture", 1);
+            glitchProgram.updateUniform("Random", glm::sphericalRand(1.f));
+            glitchProgram.updateUniform("ScreenDim", glm::vec2(finalImgWidth, finalImgHeight));
+
+            glActiveTexture(GL_TEXTURE0);
+            glBindTexture(GL_TEXTURE_2D, trailManager.getRenderTextureGLId());
+            glActiveTexture(GL_TEXTURE1);
+            glBindTexture(GL_TEXTURE_2D, glitchTextureId);
+
+            glBindVertexArray(flatifyVAO);
+            glDrawElements(GL_TRIANGLES, quad_triangleCount * 3, GL_UNSIGNED_INT, (void*)0);
+        }
 
         trailManager.unBind();
 
@@ -478,18 +503,6 @@ int main(int argc, char** argv) {
         glBindVertexArray(stretchifyVAO);
         glBindTexture(GL_TEXTURE_2D, trailManager.getRenderTextureGLId());
         glDrawElements(GL_TRIANGLES, quad_triangleCount * 3, GL_UNSIGNED_INT, (void*)0);
-
-
-        if(collisionOccured){
-            glitchProgram.useProgram();
-            glBindTexture(GL_TEXTURE_2D, trailManager.getRenderTextureGLId());
-            glitchProgram.updateUniform("Texture", 0);
-            glitchProgram.updateUniform("Random", glm::linearRand(0.f, 1.f));
-            glBindVertexArray(flatifyVAO);
-            glDrawElements(GL_TRIANGLES, quad_triangleCount * 3, GL_UNSIGNED_INT, (void*)0);
-        }
-
-
 
         if(drawBorders){
             glLineWidth(10);
