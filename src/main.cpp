@@ -11,6 +11,7 @@
 #include "ShaderProgram.hpp"
 #include "markers.hpp"
 #include "timer.hpp"
+#include <SDL2/SDL_mixer.h>
 
 // Font buffers
 extern const unsigned char DroidSans_ttf[];
@@ -20,7 +21,19 @@ int main(int argc, char** argv) {
 
     cv::VideoCapture inputVideo(-1);
     if(!inputVideo.open(-1))
-        throw;
+        throw std::runtime_error("No camera found");
+
+    if(Mix_OpenAudio(44100, MIX_DEFAULT_FORMAT, MIX_DEFAULT_CHANNELS, 1024) == -1){
+        throw std::runtime_error("Cannot init SDL_Mixer");
+    }
+
+    const std::string collisionSoundName = "../assets/collision.wav";
+    const std::string curveFeverSoundName = "../assets/curveFever.mp3";
+
+    Mix_Chunk* collisionSound = Mix_LoadWAV(collisionSoundName.c_str());
+    Mix_Music* curveFerverSound = Mix_LoadMUS(curveFeverSoundName.c_str());
+
+    Mix_PlayMusic(curveFerverSound, -1);
 
     cv::Ptr<cv::aruco::Dictionary> dictionary = cv::aruco::getPredefinedDictionary(cv::aruco::DICT_5X5_50);
     std::vector<std::vector<cv::Point2f>> markersCorners;
@@ -28,8 +41,8 @@ int main(int argc, char** argv) {
 
     cv::Mat image;
 
-//    image = cv::imread("image.png");
-//    getBordersScreenPositions(image, dictionary, markersCorners, markersIds, true);
+    image = cv::imread("../assets/image.png");
+    getBordersScreenPositions(image, dictionary, markersCorners, markersIds, true);
 
 
     if(image.empty()){
@@ -487,6 +500,9 @@ int main(int argc, char** argv) {
             glitchProgram.updateUniform("Random", glm::linearRand(0.f, 1.f));
             glBindVertexArray(flatifyVAO);
             glDrawElements(GL_TRIANGLES, quad_triangleCount * 3, GL_UNSIGNED_INT, (void*)0);
+
+            if(Mix_Playing(-1) == 0)
+                Mix_PlayChannel(-1, collisionSound, 0);
         }
 
 
@@ -641,6 +657,9 @@ int main(int argc, char** argv) {
 
     DLOG(INFO) << "END PROGRAM";
 
+    Mix_FreeChunk(collisionSound);
+    Mix_FreeMusic(curveFerverSound);
+    Mix_CloseAudio();
     glfwTerminate();
 
     return 0;
