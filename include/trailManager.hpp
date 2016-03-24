@@ -74,6 +74,7 @@ public:
     int getTexHeight() const;
 
     bool updateScoresCollision();
+    glm::vec3 color(int keyTrail);
 };
 
 void openglDrawCalls(void* userData);

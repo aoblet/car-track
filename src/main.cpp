@@ -43,8 +43,8 @@ int main(int argc, char** argv) {
 
     cv::Mat image;
 
-//    image = cv::imread("../assets/image.png");
-//    getBordersScreenPositions(image, dictionary, markersCorners, markersIds, true);
+    image = cv::imread("../assets/image.png");
+    getBordersScreenPositions(image, dictionary, markersCorners, markersIds, true);
 
 
     if(image.empty()){
@@ -331,6 +331,7 @@ int main(int argc, char** argv) {
     // Launch capture -------------------------------------------------------------------------------------------------------------------------------
 
     cv::Mat captureImage;
+    cv::Mat scoresImage;
 
     // Create Textures -------------------------------------------------------------------------------------------------------------------------------
 
@@ -351,11 +352,15 @@ int main(int argc, char** argv) {
     glGenTextures(1, &glitchTextureId);
     glBindTexture(GL_TEXTURE_2D, glitchTextureId);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, glitchTexture.cols, glitchTexture.rows, 0, GL_RGB, GL_UNSIGNED_BYTE, glitchTexture.data);
+
+    GLuint cvScoresTexture;
+    glGenTextures(1, &cvScoresTexture);
+    glBindTexture(GL_TEXTURE_2D, cvScoresTexture);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, capWidth, capHeight, 0, GL_RGB, GL_UNSIGNED_BYTE, 0);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-
 
 
     // GUI vars -------------------------------------------------------------------------------------------------------------------------------
@@ -379,6 +384,8 @@ int main(int argc, char** argv) {
 
     int finalImgWidth = 1920;
     int finalImgHeight = 1080;
+
+    // TODO change
     std::vector<int> trailsMarkerIds = {0,1};
     TrailManager trailManager(finalImgWidth, finalImgHeight, trailsMarkerIds, {glm::vec3(1,0,0), glm::vec3(0,1,0)}, 128, 0.1);
     trailManager.updateCameraPos(corners, 10);
@@ -462,6 +469,29 @@ int main(int argc, char** argv) {
         trailManager.updateTrails();
         trailManager.synchronizeVBOTrails();
 
+        captureImage.copyTo(scoresImage);
+        scoresImage = cv::Mat::zeros(captureImage.size(), captureImage.type());
+        int yOffset = 100;
+        int stepOffset = 40;
+
+        for(auto& t: trailManager.trails()){
+            glm::vec3 color = trailManager.color(t.first) * 255;
+            DLOG(INFO) << color.x << " " << color.y << " " << color.z;
+            int score = t.second.score()/2;
+            float scoreUI = score;
+            int xOffset = 0;
+            int rectWidth = 20;
+            for(int i =0; i<score; i+=10){
+                cv::rectangle(scoresImage, cv::Point(xOffset +10, yOffset-10), cv::Point(xOffset+10+rectWidth, yOffset - stepOffset), cv::Scalar(color.x, color.y, color.z), CV_FILLED);
+                xOffset += 10 + rectWidth;
+            }
+            yOffset += stepOffset;
+        }
+        glBindTexture(GL_TEXTURE_2D, cvScoresTexture);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, scoresImage.cols, scoresImage.rows, 0, GL_RGB, GL_UNSIGNED_BYTE, scoresImage.data);
+        glBindTexture(GL_TEXTURE_2D, 0);
+
+
         // Find Draw -------------------------------------------------------------------------------------------------------------------------------
 
         glClear(GL_COLOR_BUFFER_BIT);
@@ -476,6 +506,7 @@ int main(int argc, char** argv) {
             glBindVertexArray(flatifyVAO);
             glBindTexture(GL_TEXTURE_2D, cvTexture);
             glDrawElements(GL_TRIANGLES, quad_triangleCount * 3, GL_UNSIGNED_INT, (void*)0);
+
         }
 
         trailManager.renderTrails();
@@ -500,6 +531,14 @@ int main(int argc, char** argv) {
             if(Mix_Playing(-1) == 0)
                 Mix_PlayChannel(-1, collisionSound, 0);
         }
+
+        textureProgram.useProgram();
+        textureProgram.updateUniform("Texture", 0);
+        glBindVertexArray(flatifyVAO);
+        glBindTexture(GL_TEXTURE_2D, cvScoresTexture);
+        glEnable(GL_BLEND);
+        glDrawElements(GL_TRIANGLES, quad_triangleCount * 3, GL_UNSIGNED_INT, (void*)0);
+        glDisable(GL_BLEND);
 
         trailManager.unBind();
 

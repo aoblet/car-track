@@ -514,3 +514,7 @@ bool TrailManager::updateScoresCollision() {
     }
     return collide;
 }
+
+glm::vec3 TrailManager::color(int keyTrail) {
+    return _trailsColors[keyTrail];
+}

@@ -2,6 +2,8 @@
 
 in block{
     vec2 Texcoord;
+    vec2 Position;
+
 } In;
 
 out vec4 Color;
